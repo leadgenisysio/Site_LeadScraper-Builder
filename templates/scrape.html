@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}New Scrape - Lead Scraper{% endblock %}
+
+{% block content %}
+<h1>Configure Scrape</h1>
+
+<div class="scrape-form">
+    <!-- States -->
+    <div class="form-section">
+        <h3>Target States</h3>
+        <div class="checkbox-grid">
+            {% for abbr, name in states.items() %}
+            <label class="checkbox-label">
+                <input type="checkbox" name="state" value="{{ abbr }}" checked>
+                {{ name }} ({{ abbr }})
+            </label>
+            {% endfor %}
+        </div>
+        <div class="select-all-row">
+            <button class="btn btn-sm" onclick="toggleAll('state', true)">Select All</button>
+            <button class="btn btn-sm" onclick="toggleAll('state', false)">Deselect All</button>
+        </div>
+    </div>
+
+    <!-- Trades -->
+    {% for category, trade_list in trade_categories.items() %}
+    <div class="form-section">
+        <h3>{{ category }}</h3>
+        <div class="checkbox-grid">
+            {% for trade in trade_list %}
+            <label class="checkbox-label">
+                <input type="checkbox" name="trade" value="{{ trade }}" checked>
+                {{ trade }}
+            </label>
+            {% endfor %}
+        </div>
+        <div class="select-all-row">
+            <button class="btn btn-sm" onclick="toggleCategory('{{ category }}', true)">Select All</button>
+            <button class="btn btn-sm" onclick="toggleCategory('{{ category }}', false)">Deselect All</button>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Results per query -->
+    <div class="form-section">
+        <h3>Results Per Query</h3>
+        <div class="slider-row">
+            <input type="range" id="results-slider" min="5" max="30" value="10" oninput="document.getElementById('slider-val').textContent=this.value">
+            <span id="slider-val">10</span> results
+        </div>
+        <p class="hint">Higher values = more leads but slower scraping. 10 is a good starting point.</p>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="form-actions">
+        <button id="btn-start" class="btn btn-primary btn-lg" onclick="startScrape()">Start Scrape</button>
+        <button id="btn-stop" class="btn btn-danger btn-lg" onclick="stopScrape()" style="display:none">Stop Scrape</button>
+    </div>
+</div>
+
+<!-- Progress -->
+<div id="progress-panel" class="progress-panel" style="display:none">
+    <h3>Scrape Progress</h3>
+    <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <div class="progress-info">
+        <span id="progress-phase">-</span>
+        <span id="progress-detail">-</span>
+        <span id="progress-leads">0 leads found</span>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let pollInterval = null;
+
+    function getSelectedValues(name) {
+        return Array.from(document.querySelectorAll(`input[name="${name}"]:checked`))
+            .map(el => el.value);
+    }
+
+    function toggleAll(name, checked) {
+        document.querySelectorAll(`input[name="${name}"]`).forEach(el => el.checked = checked);
+    }
+
+    function toggleCategory(category, checked) {
+        // Find the h3 with the category name and toggle its sibling checkboxes
+        document.querySelectorAll('.form-section h3').forEach(h3 => {
+            if (h3.textContent.trim() === category) {
+                h3.closest('.form-section').querySelectorAll('input[type="checkbox"]')
+                    .forEach(el => el.checked = checked);
+            }
+        });
+    }
+
+    async function startScrape() {
+        const states = getSelectedValues('state');
+        const trades = getSelectedValues('trade');
+        const resultsPerQuery = parseInt(document.getElementById('results-slider').value);
+
+        if (states.length === 0 || trades.length === 0) {
+            alert('Select at least one state and one trade.');
+            return;
+        }
+
+        const resp = await fetch('/api/scrape', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({states, trades, results_per_query: resultsPerQuery}),
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'inline-block';
+            document.getElementById('progress-panel').style.display = 'block';
+            pollInterval = setInterval(pollStatus, 1000);
+        } else {
+            alert(data.message);
+        }
+    }
+
+    async function stopScrape() {
+        await fetch('/api/scrape/stop', {method: 'POST'});
+    }
+
+    async function pollStatus() {
+        const resp = await fetch('/api/scrape/status');
+        const s = await resp.json();
+
+        const pct = s.total > 0 ? Math.round((s.progress / s.total) * 100) : 0;
+        document.getElementById('progress-bar').style.width = pct + '%';
+        document.getElementById('progress-phase').textContent =
+            s.phase === 'scraping' ? 'Scraping leads...' :
+            s.phase === 'done' ? 'Complete' :
+            s.phase === 'error' ? 'Error' : '-';
+        document.getElementById('progress-detail').textContent =
+            s.total > 0 ? `${s.progress}/${s.total} - ${s.current_query}` : '';
+        document.getElementById('progress-leads').textContent = s.leads_found + ' leads found';
+
+        if (!s.running) {
+            clearInterval(pollInterval);
+            document.getElementById('btn-start').style.display = 'inline-block';
+            document.getElementById('btn-stop').style.display = 'none';
+            if (s.error) {
+                alert('Scrape error: ' + s.error);
+            } else if (s.phase === 'done') {
+                document.getElementById('progress-phase').textContent =
+                    `Done! Found ${s.leads_found} leads.`;
+            }
+        }
+    }
+
+    // Check if a scrape is already running on page load
+    (async function() {
+        const resp = await fetch('/api/scrape/status');
+        const s = await resp.json();
+        if (s.running) {
+            document.getElementById('btn-start').style.display = 'none';
+            document.getElementById('btn-stop').style.display = 'inline-block';
+            document.getElementById('progress-panel').style.display = 'block';
+            pollInterval = setInterval(pollStatus, 1000);
+        }
+    })();
+</script>
+{% endblock %}

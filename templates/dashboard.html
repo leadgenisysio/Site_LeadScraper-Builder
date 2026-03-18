@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Lead Scraper{% endblock %}
+
+{% block content %}
+<!-- Stats cards -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-number" id="stat-total">{{ stats.total }}</div>
+        <div class="stat-label">Total Leads</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="stat-phone">{{ stats.with_phone }}</div>
+        <div class="stat-label">With Phone</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="stat-email">{{ stats.with_email }}</div>
+        <div class="stat-label">With Email</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <div class="filter-group">
+        <select id="filter-state">
+            <option value="">All States</option>
+            {% for abbr, name in states.items() %}
+            <option value="{{ abbr }}">{{ name }} ({{ abbr }})</option>
+            {% endfor %}
+        </select>
+
+        <select id="filter-trade">
+            <option value="">All Trades</option>
+            {% for trade in trades %}
+            <option value="{{ trade }}">{{ trade }}</option>
+            {% endfor %}
+        </select>
+
+        <select id="filter-status">
+            <option value="">All Statuses</option>
+            {% for s in statuses %}
+            <option value="{{ s }}">{{ s | replace('_', ' ') | title }}</option>
+            {% endfor %}
+        </select>
+
+        <select id="filter-has-phone">
+            <option value="">Phone: Any</option>
+            <option value="yes">Has Phone</option>
+            <option value="no">No Phone</option>
+        </select>
+
+        <select id="filter-has-email">
+            <option value="">Email: Any</option>
+            <option value="yes">Has Email</option>
+            <option value="no">No Email</option>
+        </select>
+
+        <input type="text" id="filter-search" placeholder="Search..." />
+    </div>
+    <div class="filter-actions">
+        <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+        <button class="btn btn-primary" onclick="exportCSV()">Export CSV</button>
+    </div>
+</div>
+
+<!-- Leads table -->
+<div class="table-wrapper">
+    <table id="leads-table">
+        <thead>
+            <tr>
+                <th>Business</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Website</th>
+                <th>Quality</th>
+                <th>State</th>
+                <th>Trade</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="leads-body">
+            <tr><td colspan="9" class="empty-state">Loading leads...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Quality issues modal -->
+<div id="quality-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="modal-title">Site Quality Report</h3>
+            <button class="btn-icon" onclick="closeModal()">&#x2715;</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-score-row">
+                <span class="modal-grade" id="modal-grade">-</span>
+                <span class="modal-score-text" id="modal-score-text">-</span>
+            </div>
+            <ul id="modal-issues" class="issues-list"></ul>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+<div class="pagination" id="pagination"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPage = 1;
+    let searchTimeout = null;
+
+    function getFilters() {
+        return {
+            state: document.getElementById('filter-state').value,
+            trade: document.getElementById('filter-trade').value,
+            status: document.getElementById('filter-status').value,
+            has_phone: document.getElementById('filter-has-phone').value,
+            has_email: document.getElementById('filter-has-email').value,
+            search: document.getElementById('filter-search').value,
+        };
+    }
+
+    function buildQueryString(filters, page) {
+        const params = new URLSearchParams();
+        params.set('page', page);
+        for (const [key, val] of Object.entries(filters)) {
+            if (val) params.set(key, val);
+        }
+        return params.toString();
+    }
+
+    async function loadLeads(page) {
+        currentPage = page || 1;
+        const filters = getFilters();
+        const qs = buildQueryString(filters, currentPage);
+        const resp = await fetch('/api/leads?' + qs);
+        const data = await resp.json();
+
+        const tbody = document.getElementById('leads-body');
+        if (data.leads.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No leads found. Run a scrape to get started.</td></tr>';
+        } else {
+            tbody.innerHTML = data.leads.map(lead => `
+                <tr>
+                    <td class="cell-name">${esc(lead.business_name || '-')}</td>
+                    <td class="cell-phone">${lead.phone ? `<a href="tel:${lead.phone.split(',')[0].trim()}">${esc(lead.phone)}</a>` : '<span class="muted">-</span>'}</td>
+                    <td class="cell-email">${lead.email ? `<a href="mailto:${lead.email.split(',')[0].trim()}">${esc(lead.email)}</a>` : '<span class="muted">-</span>'}</td>
+                    <td class="cell-website">${lead.website ? `<a href="${esc(lead.website)}" target="_blank" rel="noopener">${truncUrl(lead.website)}</a>` : '-'}</td>
+                    <td class="cell-quality">${renderQuality(lead)}</td>
+                    <td>${esc(lead.state)}</td>
+                    <td>${esc(lead.trade)}</td>
+                    <td>
+                        <select class="status-select status-${lead.status}" onchange="updateStatus(${lead.id}, this.value)">
+                            ${['new','contacted','not_interested','closed'].map(s =>
+                                `<option value="${s}" ${s === lead.status ? 'selected' : ''}>${s.replace('_',' ')}</option>`
+                            ).join('')}
+                        </select>
+                    </td>
+                    <td>
+                        <button class="btn-icon" title="Delete" onclick="deleteLead(${lead.id})">&#x2715;</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update stats
+        const statsResp = await fetch('/api/stats');
+        const stats = await statsResp.json();
+        document.getElementById('stat-total').textContent = stats.total;
+        document.getElementById('stat-phone').textContent = stats.with_phone;
+        document.getElementById('stat-email').textContent = stats.with_email;
+
+        // Pagination
+        renderPagination(data.page, data.pages, data.total);
+    }
+
+    function renderPagination(page, pages, total) {
+        const el = document.getElementById('pagination');
+        if (pages <= 1) { el.innerHTML = ''; return; }
+        let html = `<span class="page-info">Page ${page} of ${pages} (${total} leads)</span>`;
+        if (page > 1) html += `<button class="btn btn-sm" onclick="loadLeads(${page-1})">Prev</button>`;
+        // Show page numbers
+        const start = Math.max(1, page - 2);
+        const end = Math.min(pages, page + 2);
+        for (let i = start; i <= end; i++) {
+            html += `<button class="btn btn-sm ${i===page ? 'btn-primary':''}" onclick="loadLeads(${i})">${i}</button>`;
+        }
+        if (page < pages) html += `<button class="btn btn-sm" onclick="loadLeads(${page+1})">Next</button>`;
+        el.innerHTML = html;
+    }
+
+    async function updateStatus(id, status) {
+        await fetch(`/api/leads/${id}/status`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({status}),
+        });
+        loadLeads(currentPage);
+    }
+
+    async function deleteLead(id) {
+        if (!confirm('Delete this lead?')) return;
+        await fetch(`/api/leads/${id}`, {method: 'DELETE'});
+        loadLeads(currentPage);
+    }
+
+    function exportCSV() {
+        const filters = getFilters();
+        const qs = buildQueryString(filters, 1);
+        window.location.href = '/api/export?' + qs;
+    }
+
+    function resetFilters() {
+        document.getElementById('filter-state').value = '';
+        document.getElementById('filter-trade').value = '';
+        document.getElementById('filter-status').value = '';
+        document.getElementById('filter-has-phone').value = '';
+        document.getElementById('filter-has-email').value = '';
+        document.getElementById('filter-search').value = '';
+        loadLeads(1);
+    }
+
+    function renderQuality(lead) {
+        if (lead.quality_score == null) return '<span class="muted">-</span>';
+        const grade = lead.quality_grade || '?';
+        const score = lead.quality_score;
+        const cls = grade === 'F' ? 'grade-f' : grade === 'D' ? 'grade-d' : grade === 'C' ? 'grade-c' : grade === 'B' ? 'grade-b' : 'grade-a';
+        const issues = lead.quality_issues || '';
+        const issueCount = issues ? issues.split('; ').length : 0;
+        return `<button class="quality-badge ${cls}" onclick='showQuality(${JSON.stringify(esc(lead.business_name || "Site"))}, "${grade}", ${score}, ${JSON.stringify(issues)})'>
+            ${grade} <span class="quality-score">${score}</span>
+        </button>
+        <span class="issue-count">${issueCount} issue${issueCount !== 1 ? 's' : ''}</span>`;
+    }
+
+    const ISSUE_EXPLANATIONS = {
+        'no https': 'The site doesn\'t use SSL encryption. Visitors see a "Not Secure" warning in their browser, which hurts trust and Google rankings. This is one of the easiest wins you can pitch — an SSL certificate is often free.',
+        'very slow load time': 'The site takes over 5 seconds to load. Google penalizes slow sites in search rankings, and most visitors leave after 3 seconds. A modern redesign with optimized images and clean code would dramatically improve this.',
+        'slow load time': 'The site takes over 3 seconds to load, which is above the recommended threshold. Faster sites rank higher on Google and convert more visitors into customers.',
+        'no viewport meta tag': 'The site isn\'t set up for mobile devices. It will look broken or tiny on phones and tablets. Over 60% of web traffic is mobile, so this is a major problem — and a strong selling point for a redesign.',
+        'missing meta description': 'Search engines use the meta description as the preview text in results. Without one, Google generates its own snippet, which is often irrelevant. Adding proper meta descriptions is a quick SEO win.',
+        'missing or empty title tag': 'The page has no title tag, so it shows up as "Untitled" or a URL in browser tabs and search results. This makes the business look unprofessional and hurts SEO.',
+        'no h1 heading': 'The page has no main heading (H1 tag). Search engines use the H1 to understand what the page is about. Adding a clear H1 improves both SEO and readability.',
+        'too many h1 tags': 'The page has multiple H1 headings, which confuses search engines about what the main topic is. A well-structured page should have exactly one H1.',
+        'no favicon': 'The site has no favicon — the small icon shown in browser tabs. Without one, the tab shows a generic icon, making the business look less professional.',
+        'images missing alt text': 'Images on the site are missing alt text descriptions. This hurts SEO (Google can\'t "see" images without alt text) and makes the site inaccessible to visually impaired visitors using screen readers.',
+        'html tables for layout': 'The site uses HTML tables for page layout — a technique from the early 2000s. This breaks on mobile devices and makes updates extremely difficult. A modern CSS layout would fix this.',
+        'deprecated html tags': 'The site uses obsolete HTML tags like <font>, <center>, or <marquee>. This means the code is very outdated and likely hasn\'t been redesigned in many years.',
+        'html frames': 'The site uses HTML frames, a technology abandoned over 15 years ago. Frames break SEO, bookmarking, and mobile browsing. This site desperately needs a modern rebuild.',
+        'flash': 'The site still references Adobe Flash, which was discontinued in 2020 and no longer works in any modern browser. Content relying on Flash is completely invisible to visitors.',
+        'excessive inline styles': 'The code has too many styles written directly into HTML elements instead of in a proper stylesheet. This makes the site harder to maintain and update, and often indicates amateur development.',
+        'heavy use of inline styles': 'The site has a significant number of inline styles rather than using a proper CSS stylesheet. This is a code quality issue that makes redesigns and updates more difficult.',
+        'copyright year': 'The copyright year in the footer is outdated, which makes the business appear inactive or neglected. This is a subtle but important trust signal — potential customers may wonder if the business is still operating.',
+        'site appears abandoned': 'The copyright year is 5+ years old, strongly suggesting the site hasn\'t been touched in years. This is a very strong lead — the business likely knows their site is outdated but hasn\'t found the right person to update it.',
+        'not recently updated': 'The copyright year is 3+ years behind, suggesting the site hasn\'t been actively maintained. The business may be ready for a refresh.',
+        'very little text content': 'The page has almost no text. Search engines need text to understand and rank a page. Visitors also need content to understand what services the business offers and why they should choose them.',
+        'thin page content': 'The page doesn\'t have much text content. Adding more descriptive content about services, service areas, and expertise would improve both SEO and visitor trust.',
+        'no structured data': 'The site has no schema.org structured data, which means Google can\'t show rich results (star ratings, business hours, service areas) in search listings. Adding this is a relatively easy SEO boost.',
+        'built with': 'The site uses a template-based website builder rather than a custom design. While functional, these sites often look generic and have limited customization. A custom design would help the business stand out from competitors.',
+        'no social media links': 'The site doesn\'t link to any social media profiles. Social links help build trust and give potential customers more ways to evaluate the business before calling.',
+        'no open graph tags': 'When someone shares a link to this site on Facebook, LinkedIn, or other platforms, it won\'t show a proper preview image or description. Open Graph tags control how links appear when shared on social media.',
+    };
+
+    function getIssueExplanation(issue) {
+        const lower = issue.toLowerCase();
+        for (const [key, explanation] of Object.entries(ISSUE_EXPLANATIONS)) {
+            if (lower.includes(key)) return explanation;
+        }
+        return 'This issue may affect the site\'s performance, SEO, or user experience. A modern redesign could address it.';
+    }
+
+    function showQuality(name, grade, score, issuesStr) {
+        const cls = grade === 'F' ? 'grade-f' : grade === 'D' ? 'grade-d' : grade === 'C' ? 'grade-c' : grade === 'B' ? 'grade-b' : 'grade-a';
+        document.getElementById('modal-title').textContent = name + ' — Quality Report';
+        const gradeEl = document.getElementById('modal-grade');
+        gradeEl.textContent = grade;
+        gradeEl.className = 'modal-grade ' + cls;
+        document.getElementById('modal-score-text').textContent = score + '/100';
+
+        const issuesList = document.getElementById('modal-issues');
+        if (issuesStr) {
+            issuesList.innerHTML = issuesStr.split('; ').map(i => {
+                const explanation = getIssueExplanation(i);
+                return `<li class="issue-item" onclick="this.classList.toggle('expanded')">
+                    <div class="issue-title">${esc(i)}</div>
+                    <div class="issue-explanation">${esc(explanation)}</div>
+                </li>`;
+            }).join('');
+        } else {
+            issuesList.innerHTML = '<li class="muted">No issues detected</li>';
+        }
+        document.getElementById('quality-modal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('quality-modal').classList.remove('active');
+    }
+
+    function esc(str) {
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function truncUrl(url) {
+        try {
+            const u = new URL(url);
+            let display = u.hostname.replace('www.', '');
+            if (display.length > 30) display = display.substring(0, 27) + '...';
+            return esc(display);
+        } catch { return esc(url); }
+    }
+
+    // Attach filter listeners
+    ['filter-state','filter-trade','filter-status','filter-has-phone','filter-has-email'].forEach(id => {
+        document.getElementById(id).addEventListener('change', () => loadLeads(1));
+    });
+    document.getElementById('filter-search').addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => loadLeads(1), 300);
+    });
+
+    // Initial load
+    loadLeads(1);
+</script>
+{% endblock %}

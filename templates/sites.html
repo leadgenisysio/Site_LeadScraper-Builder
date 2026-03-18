@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}Netlify Sites - Lead Scraper{% endblock %}
+
+{% block content %}
+<h1>Netlify Sites</h1>
+
+<!-- Stats row -->
+<div class="stats-row" id="sites-stats">
+    <div class="stat-card">
+        <div class="stat-number" id="stat-total-sites">-</div>
+        <div class="stat-label">Total Sites</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="stat-demo-sites">-</div>
+        <div class="stat-label">Demo Sites</div>
+    </div>
+</div>
+
+<!-- Toolbar -->
+<div class="outreach-toolbar">
+    <div class="toolbar-left">
+        <button class="btn btn-primary" onclick="loadSites()">Refresh</button>
+        <span class="muted" id="last-loaded"></span>
+    </div>
+    <div class="toolbar-right">
+        <button class="btn" style="background:#e74c3c;color:#fff" onclick="deleteSelected()" id="btn-delete-selected" disabled>
+            Delete Selected (<span id="selected-count">0</span>)
+        </button>
+    </div>
+</div>
+
+<!-- Sites table -->
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th style="width:32px"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+                <th>Site Name</th>
+                <th>URL</th>
+                <th>Created</th>
+                <th>Last Updated</th>
+                <th style="width:100px">Actions</th>
+            </tr>
+        </thead>
+        <tbody id="sites-body">
+            <tr><td class="empty-state" colspan="6">Loading Netlify sites...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal-overlay" id="delete-modal">
+    <div class="modal" style="max-width:450px">
+        <div class="modal-header">
+            <h3>Delete Netlify Sites</h3>
+            <button class="btn-icon" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to permanently delete <strong id="delete-count">0</strong> site(s) from Netlify?</p>
+            <p class="muted" style="font-size:0.85rem">This will also clear the demo URL from any associated leads.</p>
+            <div id="delete-list" style="max-height:200px;overflow-y:auto;margin:12px 0;font-size:0.85rem;background:#f5f5f5;padding:8px 12px;border-radius:6px"></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+                <button class="btn" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn" style="background:#e74c3c;color:#fff" onclick="confirmDelete()" id="btn-confirm-delete">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let allSites = [];
+    let selectedIds = new Set();
+
+    // ── Load sites ──────────────────────────────────────────
+    async function loadSites() {
+        const tbody = document.getElementById('sites-body');
+        tbody.innerHTML = '<tr><td class="empty-state" colspan="6">Loading...</td></tr>';
+
+        try {
+            const resp = await fetch('/api/netlify/sites');
+            const data = await resp.json();
+
+            if (!data.ok) {
+                tbody.innerHTML = `<tr><td class="empty-state" colspan="6">Error: ${esc(data.error)}</td></tr>`;
+                return;
+            }
+
+            allSites = data.sites;
+            selectedIds.clear();
+            updateSelectionUI();
+
+            document.getElementById('stat-total-sites').textContent = data.total;
+            const demoCount = allSites.filter(s => s.name && s.name.startsWith('demo-')).length;
+            document.getElementById('stat-demo-sites').textContent = demoCount;
+            document.getElementById('last-loaded').textContent = 'Updated just now';
+
+            if (allSites.length === 0) {
+                tbody.innerHTML = '<tr><td class="empty-state" colspan="6">No Netlify sites found.</td></tr>';
+                return;
+            }
+
+            // Sort by created_at descending (newest first)
+            allSites.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+            let html = '';
+            for (const site of allSites) {
+                const created = site.created_at ? new Date(site.created_at).toLocaleDateString() : '-';
+                const updated = site.updated_at ? new Date(site.updated_at).toLocaleDateString() : '-';
+                const isDemo = site.name && site.name.startsWith('demo-');
+
+                html += `<tr id="row-${site.id}">
+                    <td><input type="checkbox" class="site-cb" data-id="${site.id}" onchange="updateSelection()"></td>
+                    <td>
+                        <span class="cell-name">${esc(site.name || 'Untitled')}</span>
+                        ${isDemo ? '<span class="demo-badge">DEMO</span>' : ''}
+                    </td>
+                    <td><a href="${esc(site.url)}" target="_blank" class="site-link">${esc(site.url)}</a></td>
+                    <td class="muted">${created}</td>
+                    <td class="muted">${updated}</td>
+                    <td>
+                        <button class="btn btn-sm" style="background:#e74c3c;color:#fff;border-color:#e74c3c"
+                                onclick="deleteSingle('${site.id}', '${esc(site.name)}')">Delete</button>
+                    </td>
+                </tr>`;
+            }
+            tbody.innerHTML = html;
+
+        } catch (err) {
+            tbody.innerHTML = `<tr><td class="empty-state" colspan="6">Network error: ${esc(err.message)}</td></tr>`;
+        }
+    }
+
+    // ── Selection management ────────────────────────────────
+    function toggleSelectAll(cb) {
+        const checkboxes = document.querySelectorAll('.site-cb');
+        checkboxes.forEach(c => { c.checked = cb.checked; });
+        updateSelection();
+    }
+
+    function updateSelection() {
+        selectedIds.clear();
+        document.querySelectorAll('.site-cb:checked').forEach(c => {
+            selectedIds.add(c.dataset.id);
+        });
+        updateSelectionUI();
+    }
+
+    function updateSelectionUI() {
+        const count = selectedIds.size;
+        document.getElementById('selected-count').textContent = count;
+        document.getElementById('btn-delete-selected').disabled = count === 0;
+    }
+
+    // ── Delete single site ──────────────────────────────────
+    function deleteSingle(siteId, siteName) {
+        selectedIds.clear();
+        selectedIds.add(siteId);
+        // Uncheck all, check just this one
+        document.querySelectorAll('.site-cb').forEach(c => { c.checked = c.dataset.id === siteId; });
+        updateSelectionUI();
+        showDeleteModal();
+    }
+
+    // ── Delete selected ─────────────────────────────────────
+    function deleteSelected() {
+        if (selectedIds.size === 0) return;
+        showDeleteModal();
+    }
+
+    function showDeleteModal() {
+        const ids = Array.from(selectedIds);
+        document.getElementById('delete-count').textContent = ids.length;
+
+        const listEl = document.getElementById('delete-list');
+        listEl.innerHTML = ids.map(id => {
+            const site = allSites.find(s => s.id === id);
+            return site ? `<div style="padding:4px 0;border-bottom:1px solid #e0e0e0">${esc(site.name)} &mdash; <span class="muted">${esc(site.url)}</span></div>` : '';
+        }).join('');
+
+        document.getElementById('delete-modal').classList.add('active');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('delete-modal').classList.remove('active');
+    }
+
+    async function confirmDelete() {
+        const btn = document.getElementById('btn-confirm-delete');
+        btn.disabled = true;
+        btn.textContent = 'Deleting...';
+
+        const ids = Array.from(selectedIds);
+        let deleted = 0;
+        let errors = 0;
+
+        for (const id of ids) {
+            try {
+                const resp = await fetch(`/api/netlify/sites/${id}`, { method: 'DELETE' });
+                const data = await resp.json();
+                if (data.ok) {
+                    deleted++;
+                    // Fade out the row
+                    const row = document.getElementById(`row-${id}`);
+                    if (row) row.style.opacity = '0.3';
+                } else {
+                    errors++;
+                }
+            } catch (e) {
+                errors++;
+            }
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Delete';
+        closeDeleteModal();
+
+        const msg = `Deleted ${deleted} site(s).` + (errors ? ` ${errors} failed.` : '');
+        alert(msg);
+
+        // Reload the list
+        loadSites();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────
+    function esc(s) {
+        if (!s) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    // ── Init ────────────────────────────────────────────────
+    loadSites();
+</script>
+
+<style>
+    .site-link {
+        color: #2563eb;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    .site-link:hover {
+        text-decoration: underline;
+    }
+    .demo-badge {
+        display: inline-block;
+        background: #2563eb;
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 4px;
+        margin-left: 6px;
+        vertical-align: middle;
+        letter-spacing: 0.5px;
+    }
+    #sites-body tr {
+        transition: opacity 0.3s;
+    }
+</style>
+{% endblock %}

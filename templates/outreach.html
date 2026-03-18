@@ -1,0 +1,462 @@
+{% extends "base.html" %}
+{% block title %}Outreach - Lead Scraper{% endblock %}
+
+{% block content %}
+<h1>Outreach</h1>
+
+<!-- Config status -->
+<div id="config-status" class="config-status">
+    <div class="config-item">
+        <span class="config-dot" id="dot-netlify"></span>
+        <span>Netlify</span>
+    </div>
+    <div class="config-item">
+        <span class="config-dot" id="dot-gmail"></span>
+        <span>Gmail</span>
+    </div>
+    <div class="config-item">
+        <span class="config-dot" id="dot-test-mode"></span>
+        <span id="test-mode-label">Test Mode</span>
+    </div>
+</div>
+
+<!-- Stats row -->
+<div class="stats-row" id="outreach-stats">
+    <div class="stat-card">
+        <div class="stat-number" id="stat-candidates">-</div>
+        <div class="stat-label">Candidates</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="stat-demos">-</div>
+        <div class="stat-label">Demos Generated</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="stat-approved">-</div>
+        <div class="stat-label">Approved</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="stat-sent-today">-</div>
+        <div class="stat-label">Sent Today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number" id="stat-total-sent">-</div>
+        <div class="stat-label">Total Sent</div>
+    </div>
+</div>
+
+<!-- A/B Test Stats -->
+<div id="ab-stats-panel" style="display:none;margin-bottom:20px;padding:20px;background:#f8f9fa;border-radius:8px;border:1px solid #e5e7eb">
+    <h3 style="margin:0 0 12px 0;font-size:1rem;color:#333">A/B Subject Line Test</h3>
+    <div id="ab-stats-body" style="display:flex;gap:16px;flex-wrap:wrap"></div>
+</div>
+
+<!-- Batch controls -->
+<div class="outreach-toolbar">
+    <div class="toolbar-left">
+        <button class="btn btn-primary" onclick="scoreAllCandidates()">Score Candidates</button>
+        <button class="btn" onclick="loadCandidates()">Refresh</button>
+    </div>
+    <div class="toolbar-right">
+        <button class="btn btn-primary" onclick="batchSendApproved()" id="btn-batch-send">
+            Send All Approved
+        </button>
+    </div>
+</div>
+
+<!-- Candidates table -->
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Business</th>
+                <th>Email</th>
+                <th>Score</th>
+                <th>Top Issues</th>
+                <th>Trade</th>
+                <th>State</th>
+                <th>Demo</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="candidates-body">
+            <tr><td class="empty-state" colspan="8">Loading candidates...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Pagination -->
+<div class="pagination" id="outreach-pagination"></div>
+
+<!-- ═══ SENT EMAIL LOG ════════════════════════════════════ -->
+<div style="margin-top:40px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0">Sent Email Log</h2>
+        <button class="btn" onclick="loadSentLog()">Refresh</button>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sent At</th>
+                    <th>Business</th>
+                    <th>Email To</th>
+                    <th>Subject</th>
+                    <th>Variant</th>
+                    <th>Demo Link</th>
+                </tr>
+            </thead>
+            <tbody id="sent-log-body">
+                <tr><td class="empty-state" colspan="6">Loading sent emails...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination" id="sent-log-pagination"></div>
+</div>
+
+<!-- Email Preview Modal -->
+<div class="modal-overlay" id="email-modal">
+    <div class="modal" style="max-width:650px">
+        <div class="modal-header">
+            <h3 id="email-modal-title">Email Preview</h3>
+            <button class="btn-icon" onclick="closeEmailModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="email-preview-meta">
+                <p><strong>To:</strong> <span id="email-preview-to"></span></p>
+                <p><strong>Subject:</strong> <span id="email-preview-subject"></span></p>
+            </div>
+            <div class="email-preview-body" id="email-preview-body"></div>
+            <div class="email-preview-actions">
+                <button class="btn btn-primary" id="btn-send-from-preview" onclick="sendFromPreview()">Send Email</button>
+                <button class="btn" onclick="closeEmailModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPage = 1;
+    let previewLeadId = null;
+
+    // ── Load stats ─────────────────────────────────────────
+    async function loadStats() {
+        const resp = await fetch('/api/outreach/stats');
+        const s = await resp.json();
+        document.getElementById('stat-candidates').textContent = s.candidates;
+        document.getElementById('stat-demos').textContent = s.demos_generated;
+        document.getElementById('stat-approved').textContent = s.demos_approved;
+        document.getElementById('stat-sent-today').textContent = `${s.sent_today}/${s.daily_limit}`;
+        document.getElementById('stat-total-sent').textContent = s.sent_total;
+
+        // Config status
+        document.getElementById('dot-netlify').className =
+            'config-dot ' + (s.netlify_configured ? 'dot-ok' : 'dot-err');
+        document.getElementById('dot-gmail').className =
+            'config-dot ' + (s.gmail_configured ? 'dot-ok' : 'dot-err');
+        document.getElementById('dot-test-mode').className =
+            'config-dot ' + (s.test_mode ? 'dot-warn' : 'dot-ok');
+        document.getElementById('test-mode-label').textContent =
+            s.test_mode ? 'Test Mode ON' : 'Test Mode OFF';
+
+        // Disable batch send if at limit
+        if (s.sent_today >= s.daily_limit) {
+            document.getElementById('btn-batch-send').disabled = true;
+            document.getElementById('btn-batch-send').textContent = 'Daily Limit Reached';
+        }
+    }
+
+    // ── Load candidates ────────────────────────────────────
+    async function loadCandidates(page) {
+        page = page || currentPage;
+        currentPage = page;
+
+        const resp = await fetch(`/api/outreach/candidates?page=${page}&per_page=25`);
+        const data = await resp.json();
+        const tbody = document.getElementById('candidates-body');
+
+        if (!data.leads || data.leads.length === 0) {
+            tbody.innerHTML = '<tr><td class="empty-state" colspan="8">No candidates found. Run a scrape first and ensure leads have emails and quality scores.</td></tr>';
+            document.getElementById('outreach-pagination').innerHTML = '';
+            return;
+        }
+
+        let html = '';
+        for (const lead of data.leads) {
+            const issues = lead.quality_issues
+                ? lead.quality_issues.split(';').slice(0, 2).map(i => i.trim()).join(', ')
+                : '-';
+
+            // Demo status
+            let demoCol = '';
+            if (lead.demo_approved === 1) {
+                demoCol = `<a href="${lead.demo_url}" target="_blank" class="demo-status approved">Approved &#10003;</a>`;
+            } else if (lead.demo_url) {
+                demoCol = `
+                    <a href="${lead.demo_url}" target="_blank" class="demo-status review">Review</a>
+                    <button class="btn btn-sm" style="margin-left:4px" onclick="approveLead(${lead.id})">&#10003;</button>
+                    <button class="btn btn-sm btn-icon" onclick="rejectLead(${lead.id})">&times;</button>
+                `;
+            } else {
+                demoCol = `<button class="btn btn-sm btn-primary" onclick="generateDemo(${lead.id}, this)">Generate</button>`;
+            }
+
+            // Actions
+            let actionsCol = '';
+            if (lead.demo_approved === 1 && !lead.outreach_sent_at) {
+                actionsCol = `
+                    <button class="btn btn-sm" onclick="previewEmail(${lead.id})">Preview</button>
+                    <button class="btn btn-sm btn-primary" onclick="sendLead(${lead.id}, this)">Send</button>
+                `;
+            } else if (lead.outreach_sent_at) {
+                actionsCol = '<span class="sent-badge">Sent &#10003;</span>';
+            } else {
+                actionsCol = '<span class="muted">-</span>';
+            }
+
+            html += `<tr>
+                <td class="cell-name">${esc(lead.business_name || '-')}</td>
+                <td class="cell-email">${esc(lead.email || '-')}</td>
+                <td><span class="outreach-score">${lead.outreach_score ?? '-'}</span></td>
+                <td title="${esc(lead.quality_issues || '')}">${esc(issues)}</td>
+                <td>${esc(lead.trade || '-')}</td>
+                <td>${esc(lead.state || '-')}</td>
+                <td class="demo-col">${demoCol}</td>
+                <td>${actionsCol}</td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+
+        // Pagination
+        const totalPages = data.pages;
+        let pagHtml = `<span class="page-info">${data.total} candidates</span>`;
+        if (totalPages > 1) {
+            if (page > 1) pagHtml += `<button class="btn btn-sm" onclick="loadCandidates(${page-1})">Prev</button>`;
+            pagHtml += `<span class="page-info">Page ${page}/${totalPages}</span>`;
+            if (page < totalPages) pagHtml += `<button class="btn btn-sm" onclick="loadCandidates(${page+1})">Next</button>`;
+        }
+        document.getElementById('outreach-pagination').innerHTML = pagHtml;
+        loadStats();
+    }
+
+    // ── Score all candidates ───────────────────────────────
+    async function scoreAllCandidates() {
+        const resp = await fetch('/api/outreach/score', {method: 'POST'});
+        const data = await resp.json();
+        alert(`Scored ${data.scored} candidates`);
+        loadCandidates();
+    }
+
+    // ── Generate demo ──────────────────────────────────────
+    async function generateDemo(leadId, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+        try {
+            const resp = await fetch(`/api/outreach/${leadId}/generate`, {method: 'POST'});
+            const data = await resp.json();
+            if (data.ok) {
+                loadCandidates();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+                btn.disabled = false;
+                btn.textContent = 'Generate';
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+            btn.disabled = false;
+            btn.textContent = 'Generate';
+        }
+    }
+
+    // ── Approve / Reject ───────────────────────────────────
+    async function approveLead(leadId) {
+        await fetch(`/api/outreach/${leadId}/approve`, {method: 'POST'});
+        loadCandidates();
+    }
+
+    async function rejectLead(leadId) {
+        if (!confirm('Reject this demo and delete the Netlify site?')) return;
+        await fetch(`/api/outreach/${leadId}/reject`, {method: 'POST'});
+        loadCandidates();
+    }
+
+    // ── Preview email ──────────────────────────────────────
+    async function previewEmail(leadId) {
+        previewLeadId = leadId;
+        const resp = await fetch(`/api/outreach/${leadId}/preview-email`);
+        const data = await resp.json();
+        if (data.error) {
+            alert('Error: ' + data.error);
+            return;
+        }
+        document.getElementById('email-preview-to').textContent = data.to;
+        document.getElementById('email-preview-subject').textContent = data.subject;
+        document.getElementById('email-preview-body').innerHTML = data.html_body;
+        document.getElementById('email-modal').classList.add('active');
+    }
+
+    function closeEmailModal() {
+        document.getElementById('email-modal').classList.remove('active');
+        previewLeadId = null;
+    }
+
+    async function sendFromPreview() {
+        if (!previewLeadId) return;
+        const btn = document.getElementById('btn-send-from-preview');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        await sendLead(previewLeadId);
+        closeEmailModal();
+        btn.disabled = false;
+        btn.textContent = 'Send Email';
+    }
+
+    // ── Send email ─────────────────────────────────────────
+    async function sendLead(leadId, btn) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+        try {
+            const resp = await fetch(`/api/outreach/${leadId}/send`, {method: 'POST'});
+            const data = await resp.json();
+            if (data.ok) {
+                loadCandidates();
+            } else {
+                alert('Send error: ' + (data.error || 'Unknown'));
+                if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+            }
+        } catch (err) {
+            alert('Network error: ' + err.message);
+            if (btn) { btn.disabled = false; btn.textContent = 'Send'; }
+        }
+    }
+
+    // ── Batch send ─────────────────────────────────────────
+    async function batchSendApproved() {
+        if (!confirm('Send emails to all approved leads? This will respect the daily limit.')) return;
+        const btn = document.getElementById('btn-batch-send');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        try {
+            const resp = await fetch('/api/outreach/batch-send', {method: 'POST'});
+            const data = await resp.json();
+            alert(`Sent ${data.sent} emails. ${data.skipped} skipped.${data.errors ? ' Errors: ' + data.errors : ''}`);
+        } catch (err) {
+            alert('Batch send error: ' + err.message);
+        }
+        btn.disabled = false;
+        btn.textContent = 'Send All Approved';
+        loadCandidates();
+    }
+
+    // ── Helpers ─────────────────────────────────────────────
+    function esc(s) {
+        if (!s) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    // ── Sent Email Log ─────────────────────────────────────
+    let sentLogPage = 1;
+    async function loadSentLog(page) {
+        page = page || sentLogPage;
+        sentLogPage = page;
+        const tbody = document.getElementById('sent-log-body');
+
+        try {
+            const resp = await fetch(`/api/outreach/sent-log?page=${page}&per_page=20`);
+            const data = await resp.json();
+
+            if (!data.logs || data.logs.length === 0) {
+                tbody.innerHTML = '<tr><td class="empty-state" colspan="6">No emails sent yet.</td></tr>';
+                document.getElementById('sent-log-pagination').innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            for (const log of data.logs) {
+                const sentDate = log.sent_at ? new Date(log.sent_at).toLocaleString() : '-';
+                const variantBadge = log.subject_variant
+                    ? `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:700;background:${log.subject_variant === 'A' ? '#dbeafe' : log.subject_variant === 'B' ? '#dcfce7' : '#ffedd5'};color:${log.subject_variant === 'A' ? '#2563eb' : log.subject_variant === 'B' ? '#16a34a' : '#ea580c'}">${esc(log.subject_variant)}</span>`
+                    : '<span class="muted">-</span>';
+
+                html += `<tr>
+                    <td class="muted" style="white-space:nowrap;font-size:0.85rem">${sentDate}</td>
+                    <td class="cell-name">${esc(log.business_name || '-')}</td>
+                    <td class="cell-email">${esc(log.email_to || '-')}</td>
+                    <td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(log.email_subject || '')}">${esc(log.email_subject || '-')}</td>
+                    <td>${variantBadge}</td>
+                    <td>${log.demo_url ? `<a href="${esc(log.demo_url)}" target="_blank" style="color:#2563eb;text-decoration:none;font-size:0.85rem">View</a>` : '-'}</td>
+                </tr>`;
+            }
+            tbody.innerHTML = html;
+
+            // Pagination
+            const totalPages = data.pages;
+            let pagHtml = `<span class="page-info">${data.total} emails sent</span>`;
+            if (totalPages > 1) {
+                if (page > 1) pagHtml += `<button class="btn btn-sm" onclick="loadSentLog(${page-1})">Prev</button>`;
+                pagHtml += `<span class="page-info">Page ${page}/${totalPages}</span>`;
+                if (page < totalPages) pagHtml += `<button class="btn btn-sm" onclick="loadSentLog(${page+1})">Next</button>`;
+            }
+            document.getElementById('sent-log-pagination').innerHTML = pagHtml;
+        } catch (e) {
+            tbody.innerHTML = `<tr><td class="empty-state" colspan="6">Error loading log: ${esc(e.message)}</td></tr>`;
+        }
+    }
+
+    // ── A/B Stats ───────────────────────────────────────────
+    async function loadABStats() {
+        try {
+            const resp = await fetch('/api/outreach/ab-stats');
+            const data = await resp.json();
+            if (!data.ok) return;
+
+            const panel = document.getElementById('ab-stats-panel');
+            const body = document.getElementById('ab-stats-body');
+
+            // Build cards for each variant definition
+            const defs = data.definitions || [];
+            const stats = data.variants || [];
+            const statsMap = {};
+            let totalSent = 0;
+            for (const s of stats) {
+                statsMap[s.subject_variant] = s.sent;
+                totalSent += s.sent;
+            }
+
+            if (defs.length === 0) return;
+
+            panel.style.display = 'block';
+            let html = '';
+            for (const v of defs) {
+                const sent = statsMap[v.id] || 0;
+                const pct = totalSent > 0 ? Math.round((sent / totalSent) * 100) : 0;
+                const barColor = v.id === 'A' ? '#2563eb' : v.id === 'B' ? '#16a34a' : '#ea580c';
+                html += `
+                <div style="flex:1;min-width:200px;background:#fff;padding:16px;border-radius:8px;border:1px solid #e5e7eb">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <span style="font-weight:700;color:${barColor};font-size:1.1rem">Variant ${esc(v.id)}</span>
+                        <span style="font-size:1.3rem;font-weight:800;color:#333">${sent}</span>
+                    </div>
+                    <div style="font-size:0.85rem;color:#666;margin-bottom:10px;line-height:1.4">"${esc(v.subject)}"</div>
+                    <div style="background:#f0f0f0;border-radius:4px;height:8px;overflow:hidden">
+                        <div style="width:${pct}%;background:${barColor};height:100%;border-radius:4px;transition:width 0.5s"></div>
+                    </div>
+                    <div style="font-size:0.75rem;color:#999;margin-top:4px">${pct}% of total sends</div>
+                </div>`;
+            }
+            body.innerHTML = html;
+        } catch (e) {
+            // Silently fail — A/B stats are non-critical
+        }
+    }
+
+    // ── Init ────────────────────────────────────────────────
+    loadStats();
+    loadCandidates();
+    loadABStats();
+    loadSentLog();
+</script>
+{% endblock %}

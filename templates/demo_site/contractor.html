@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ business_name }} | {{ trade }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ──────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:#1a1a2e;line-height:1.7;background:#fff;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+img{max-width:100%;display:block}
+ul{list-style:none}
+
+/* ── Brand Color System ────────────────────────────── */
+:root{
+  --brand:{{ primary_color }};
+  --brand-dark:color-mix(in srgb,{{ primary_color }} 75%,#000);
+  --brand-darker:color-mix(in srgb,{{ primary_color }} 55%,#000);
+  --brand-light:color-mix(in srgb,{{ primary_color }} 18%,#fff);
+  --brand-xlight:color-mix(in srgb,{{ primary_color }} 6%,#fff);
+  --brand-glass:color-mix(in srgb,{{ primary_color }} 8%,transparent);
+  --text:#1a1a2e;
+  --text-light:#64748b;
+  --text-inv:#ffffff;
+  --bg:#ffffff;
+  --bg-alt:#f8fafc;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:0 12px 40px rgba(0,0,0,0.12);
+  --shadow-xl:0 20px 60px rgba(0,0,0,0.15);
+  --radius:12px;
+  --radius-lg:20px;
+}
+
+/* ── Typography ────────────────────────────────────── */
+h1,h2,h3,h4{font-weight:800;line-height:1.15;letter-spacing:-0.02em}
+h1{font-size:clamp(2.2rem,5vw,3.8rem)}
+h1,h2,h3{font-family:'Playfair Display','Georgia',serif}
+h2{font-size:clamp(1.8rem,3.5vw,2.8rem)}
+h3{font-size:clamp(1.1rem,2vw,1.35rem)}
+p{font-size:1.05rem;color:var(--text-light)}
+
+.section-title{text-align:center;margin-bottom:1rem}
+.section-title h2{margin-bottom:0.5rem}
+.section-title p{max-width:600px;margin:0 auto;font-size:1.1rem}
+.section-title::after{content:'';display:block;width:60px;height:4px;background:var(--brand);margin:1rem auto 0;border-radius:2px}
+.container{max-width:1200px;margin:0 auto;padding:0 24px}
+
+/* ── Buttons ───────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;border-radius:50px;font-weight:700;font-size:1rem;transition:all .25s ease;cursor:pointer;border:none}
+.btn-primary{background:var(--brand);color:#fff;box-shadow:0 4px 15px color-mix(in srgb,var(--brand) 40%,transparent)}
+.btn-primary:hover{background:var(--brand-dark);transform:translateY(-2px);box-shadow:0 6px 25px color-mix(in srgb,var(--brand) 50%,transparent)}
+.btn-outline{background:transparent;color:#fff;border:2px solid rgba(255,255,255,0.7)}
+.btn-outline:hover{background:rgba(255,255,255,0.15);border-color:#fff}
+.btn-dark{background:var(--brand);color:#fff}
+.btn-dark:hover{background:var(--brand-dark);transform:translateY(-2px)}
+
+/* ──────────────────────────────────────────────────── */
+/* 1. NAVBAR                                          */
+/* ──────────────────────────────────────────────────── */
+.navbar{position:fixed;top:0;left:0;right:0;z-index:1000;padding:18px 0;transition:all .35s ease}
+.navbar.scrolled{background:rgba(255,255,255,0.97);backdrop-filter:blur(12px);padding:12px 0;box-shadow:var(--shadow-md)}
+.navbar .container{display:flex;align-items:center;justify-content:space-between}
+.nav-brand{font-size:1.4rem;font-weight:800;color:#fff;transition:color .35s;display:flex;align-items:center;gap:10px}
+.nav-logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--brand);color:#fff;border-radius:8px;font-size:1.2rem;font-weight:900;letter-spacing:-1px;flex-shrink:0}
+.nav-logo-img{width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0}
+.navbar.scrolled .nav-brand{color:var(--text)}
+.nav-links{display:flex;align-items:center;gap:32px}
+.nav-links a{color:rgba(255,255,255,0.85);font-weight:500;font-size:0.95rem;transition:color .35s}
+.navbar.scrolled .nav-links a{color:var(--text-light)}
+.nav-links a:hover{color:#fff}
+.navbar.scrolled .nav-links a:hover{color:var(--brand)}
+.nav-cta{padding:10px 24px !important;border-radius:50px;background:var(--brand);color:#fff !important;font-weight:700;font-size:0.9rem !important;transition:all .25s}
+.nav-cta:hover{background:var(--brand-dark) !important;transform:translateY(-1px)}
+.navbar.scrolled .nav-cta{background:var(--brand);color:#fff !important}
+
+/* Hamburger (mobile) */
+.nav-toggle{display:none;flex-direction:column;gap:5px;cursor:pointer;z-index:1001}
+.nav-toggle span{display:block;width:24px;height:2px;background:#fff;transition:all .3s}
+.navbar.scrolled .nav-toggle span{background:var(--text)}
+
+#nav-check{display:none}
+
+/* ──────────────────────────────────────────────────── */
+/* 2. HERO                                            */
+/* ──────────────────────────────────────────────────── */
+.hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:url('{{ hero_url }}') center/cover no-repeat;z-index:0}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,0,0,0.7) 0%,color-mix(in srgb,var(--brand-darker) 85%,transparent) 100%);z-index:1}
+.hero-content{position:relative;z-index:2;max-width:800px;padding:0 24px}
+.hero h1{color:#fff;margin-bottom:16px;text-shadow:0 2px 20px rgba(0,0,0,0.3);white-space:pre-line}
+.hero-sub{color:rgba(255,255,255,0.85);font-size:clamp(1.1rem,2vw,1.35rem);margin-bottom:36px;font-weight:400}
+.hero-btns{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.hero-scroll{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);z-index:2;animation:bounce 2s infinite}
+.hero-scroll svg{width:28px;height:28px;stroke:rgba(255,255,255,0.6)}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(10px)}}
+
+/* ──────────────────────────────────────────────────── */
+/* 3. TRUST STRIP                                     */
+/* ──────────────────────────────────────────────────── */
+.trust-strip{background:var(--bg-alt);border-bottom:1px solid #e2e8f0;padding:40px 0}
+.trust-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+.trust-item .trust-value{font-size:2.2rem;font-weight:800;color:var(--brand);line-height:1}
+.trust-item .trust-label{font-size:0.9rem;color:var(--text-light);margin-top:4px;font-weight:500}
+.trust-stars{color:var(--brand);font-size:1.1rem;display:inline-block;margin-top:-2px}
+
+/* ──────────────────────────────────────────────────── */
+/* 4. SERVICES                                        */
+/* ──────────────────────────────────────────────────── */
+.services{padding:100px 0;background:var(--bg)}
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px;margin-top:50px}
+.service-card{background:var(--bg);border:1px solid #e2e8f0;border-radius:var(--radius);padding:32px 28px;transition:all .3s ease;position:relative;overflow:hidden}
+.service-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--brand);transform:scaleX(0);transition:transform .3s ease}
+.service-card:hover{transform:translateY(-6px);box-shadow:var(--shadow-lg);border-color:transparent}
+.service-card:hover::before{transform:scaleX(1)}
+.service-icon{width:48px;height:48px;color:var(--brand);margin-bottom:16px;flex-shrink:0}
+.service-card h3{margin-bottom:8px;color:var(--text)}
+.service-card p{font-size:0.95rem;color:var(--text-light);line-height:1.6}
+
+/* ──────────────────────────────────────────────────── */
+/* 5. PROCESS / WHY CHOOSE US                         */
+/* ──────────────────────────────────────────────────── */
+.process{padding:100px 0;background:var(--bg-alt);position:relative}
+.process::before{content:'';position:absolute;top:0;left:0;right:0;height:80px;background:var(--bg);clip-path:polygon(0 0,100% 0,100% 0%,0 100%)}
+.process-grid{display:flex;gap:40px;margin-top:60px;position:relative}
+.process-grid::before{content:'';position:absolute;top:40px;left:10%;right:10%;height:3px;background:linear-gradient(90deg,var(--brand-light),var(--brand),var(--brand-light))}
+.process-step{flex:1;text-align:center;position:relative;z-index:1}
+.step-num{width:80px;height:80px;border-radius:50%;background:var(--brand);color:#fff;font-size:1.8rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;box-shadow:0 4px 20px color-mix(in srgb,var(--brand) 35%,transparent);border:4px solid var(--bg-alt)}
+.process-step h3{margin-bottom:8px;color:var(--text)}
+.process-step p{font-size:0.95rem;color:var(--text-light);max-width:280px;margin:0 auto}
+
+/* ──────────────────────────────────────────────────── */
+/* 6. ABOUT                                           */
+/* ──────────────────────────────────────────────────── */
+.about{padding:100px 0;background:var(--bg)}
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-top:0}
+.about-img{border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-lg);aspect-ratio:4/3;position:relative}
+.about-img img{width:100%;height:100%;object-fit:cover}
+.about-img::after{content:'';position:absolute;inset:0;border-radius:var(--radius-lg);box-shadow:inset 0 0 0 1px rgba(0,0,0,0.1)}
+.about-text h2{text-align:left;margin-bottom:20px}
+.about-text h2::after{display:none}
+.about-text p{margin-bottom:24px;font-size:1.05rem;line-height:1.8}
+.about-badges{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+.about-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:var(--brand-xlight);color:var(--brand-dark);border-radius:50px;font-size:0.9rem;font-weight:600}
+.about-badge svg{width:16px;height:16px;flex-shrink:0}
+
+/* ──────────────────────────────────────────────────── */
+/* 7. GALLERY                                         */
+/* ──────────────────────────────────────────────────── */
+{% if gallery_urls %}
+.gallery{padding:100px 0;background:var(--bg-alt)}
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:50px}
+.gallery-item{position:relative;border-radius:var(--radius);overflow:hidden;aspect-ratio:4/3;cursor:pointer}
+.gallery-item img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
+.gallery-item:hover img{transform:scale(1.08)}
+.gallery-item::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.5) 0%,transparent 50%);opacity:0;transition:opacity .3s}
+.gallery-item:hover::after{opacity:1}
+{% endif %}
+
+/* ──────────────────────────────────────────────────── */
+/* 8. TESTIMONIALS                                    */
+/* ──────────────────────────────────────────────────── */
+.testimonials{padding:100px 0;background:var(--bg)}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px;margin-top:50px}
+.testimonial-card{background:var(--bg);border:1px solid #e2e8f0;border-radius:var(--radius);padding:32px;position:relative;transition:all .3s}
+.testimonial-card:hover{box-shadow:var(--shadow-md);transform:translateY(-4px)}
+.testimonial-card::before{content:'\201C';position:absolute;top:16px;right:24px;font-size:4rem;line-height:1;color:var(--brand-light);font-family:Georgia,serif}
+.testimonial-stars{color:var(--brand);font-size:1rem;margin-bottom:12px;display:flex;gap:2px}
+.testimonial-stars svg{width:18px;height:18px}
+.testimonial-text{font-size:1rem;color:var(--text);line-height:1.7;margin-bottom:16px;font-style:italic}
+.testimonial-author{font-weight:700;color:var(--text);font-size:0.95rem}
+.testimonial-project{font-size:0.85rem;color:var(--text-light)}
+
+/* ──────────────────────────────────────────────────── */
+/* 9. SERVICE AREA                                    */
+/* ──────────────────────────────────────────────────── */
+{% if service_area %}
+.service-area{padding:60px 0;background:var(--brand-xlight);text-align:center}
+.service-area h2{margin-bottom:12px}
+.service-area p{font-size:1.1rem;color:var(--text-light)}
+.sa-icon{width:32px;height:32px;color:var(--brand);margin:0 auto 12px}
+{% endif %}
+
+/* ──────────────────────────────────────────────────── */
+/* 10. CTA SECTION                                    */
+/* ──────────────────────────────────────────────────── */
+.cta{padding:100px 0;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-darker) 100%);text-align:left;position:relative;overflow:hidden}
+.cta::before{content:'';position:absolute;top:-50%;right:-25%;width:600px;height:600px;border-radius:50%;background:rgba(255,255,255,0.05)}
+.cta::after{content:'';position:absolute;bottom:-30%;left:-15%;width:400px;height:400px;border-radius:50%;background:rgba(255,255,255,0.04)}
+.cta h2{color:#fff;font-size:clamp(2rem,4vw,3rem);margin-bottom:16px;position:relative;z-index:1}
+
+/* Contact split layout */
+.contact-split{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:start;position:relative;z-index:1}
+.contact-info-col p{color:rgba(255,255,255,0.85);font-size:1.1rem;line-height:1.7;margin-bottom:32px;max-width:420px}
+.contact-detail{display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;color:#fff}
+.contact-icon-circle{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0}
+.contact-icon-circle svg{width:20px;height:20px}
+.contact-trust{margin-top:32px;padding-top:28px;border-top:1px solid rgba(255,255,255,0.2)}
+.trust-list{list-style:none;padding:0;margin:0}
+.trust-list li{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,0.95);font-size:0.95rem;padding:8px 0}
+
+/* Floating CTA */
+.floating-cta{position:fixed;bottom:24px;right:24px;z-index:998;opacity:0;transform:translateY(20px);pointer-events:none;transition:opacity .3s,transform .3s}
+.floating-cta.show{opacity:1;transform:translateY(0);pointer-events:all}
+.floating-cta a{display:flex;align-items:center;gap:8px;background:var(--brand);color:#fff;padding:14px 24px;border-radius:50px;font-weight:700;font-size:0.95rem;box-shadow:0 8px 30px rgba(0,0,0,0.25);transition:transform .15s,box-shadow .15s;font-family:'Inter',sans-serif}
+.floating-cta a:hover{transform:scale(1.05);box-shadow:0 12px 40px rgba(0,0,0,0.3)}
+.floating-cta svg{width:18px;height:18px;flex-shrink:0}
+
+/* FAQ Accordion */
+.faq{padding:100px 0;background:#fff}
+.faq-grid{max-width:800px;margin:0 auto}
+.faq-item{border-bottom:1px solid #e5e7eb}
+.faq-question{width:100%;display:flex;justify-content:space-between;align-items:center;padding:20px 0;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-size:1.05rem;font-weight:600;color:var(--dark);text-align:left;line-height:1.4}
+.faq-question:hover{color:var(--brand)}
+.faq-icon{width:24px;height:24px;flex-shrink:0;transition:transform .3s;color:var(--brand)}
+.faq-item.open .faq-icon{transform:rotate(45deg)}
+.faq-answer{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.faq-answer p{padding:0 0 20px;color:var(--text-light);line-height:1.7;font-size:0.95rem}
+
+/* Lead form */
+.lead-form{background:#fff;border-radius:16px;padding:36px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:0.85rem;font-weight:600;color:var(--dark);margin-bottom:6px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:12px 16px;border:2px solid #e5e7eb;border-radius:10px;font-size:0.95rem;transition:border-color .2s,box-shadow .2s;background:#fafafa;color:var(--dark);font-family:inherit;box-sizing:border-box}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-faint);background:#fff}
+.form-group input::placeholder,.form-group textarea::placeholder{color:#aab}
+.form-group select{cursor:pointer;-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.form-submit-btn{width:100%;padding:16px;font-size:1.05rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.form-submit-btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.15)}
+.form-disclaimer{text-align:center;font-size:0.78rem;color:#999;margin-top:12px}
+.form-success{text-align:center;padding:40px 20px;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.cta p{color:rgba(255,255,255,0.85);font-size:1.2rem;margin-bottom:36px;position:relative;z-index:1}
+{% if phone %}
+.cta-phone{font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;color:#fff;display:inline-flex;align-items:center;gap:12px;margin-bottom:24px;position:relative;z-index:1}
+.cta-phone svg{width:32px;height:32px}
+{% endif %}
+.cta .btn{position:relative;z-index:1}
+
+/* ──────────────────────────────────────────────────── */
+/* 11. FOOTER                                         */
+/* ──────────────────────────────────────────────────── */
+.footer{background:#111827;color:rgba(255,255,255,0.7);padding:60px 0 30px}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:40px;margin-bottom:40px}
+.footer h4{color:#fff;font-size:1.1rem;margin-bottom:16px;font-weight:700}
+.footer-brand{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.footer-logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--brand);color:#fff;border-radius:8px;font-size:1.2rem;font-weight:900;flex-shrink:0}
+.footer-logo-img{width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0}
+.footer-desc{font-size:0.95rem;line-height:1.6;color:rgba(255,255,255,0.6)}
+.footer-links a{display:block;padding:4px 0;color:rgba(255,255,255,0.6);font-size:0.95rem;transition:color .2s}
+.footer-links a:hover{color:var(--brand)}
+.footer-contact-item{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:0.95rem}
+.footer-contact-item svg{width:16px;height:16px;color:var(--brand);flex-shrink:0}
+.footer-bottom{border-top:1px solid rgba(255,255,255,0.1);padding-top:24px;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;color:rgba(255,255,255,0.4)}
+.demo-notice{font-size:0.75rem;color:rgba(255,255,255,0.3);text-align:center;margin-top:12px;font-style:italic}
+
+/* ──────────────────────────────────────────────────── */
+/* SCROLL ANIMATIONS                                  */
+/* ──────────────────────────────────────────────────── */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .7s ease,transform .7s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ──────────────────────────────────────────────────── */
+/* RESPONSIVE                                         */
+/* ──────────────────────────────────────────────────── */
+@media(max-width:1024px){
+  .footer-grid{grid-template-columns:1fr 1fr}
+  .about-grid{grid-template-columns:1fr;gap:40px}
+  .about-img{max-width:600px;margin:0 auto}
+}
+@media(max-width:768px){
+  .nav-toggle{display:flex}
+  .nav-links{position:fixed;top:0;right:-100%;width:280px;height:100vh;background:var(--brand-darker);flex-direction:column;justify-content:center;gap:24px;transition:right .3s ease;padding:20px;z-index:1000}
+  .nav-links a{color:#fff !important;font-size:1.1rem}
+  #nav-check:checked ~ .nav-links{right:0}
+  #nav-check:checked ~ .nav-backdrop{display:block}
+  .nav-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999}
+
+  .trust-grid{grid-template-columns:repeat(2,1fr);gap:16px}
+  .services-grid{grid-template-columns:1fr}
+  .process-grid{flex-direction:column;gap:30px}
+  .process-grid::before{display:none}
+  .testimonials-grid{grid-template-columns:1fr}
+  {% if gallery_urls %}.gallery-grid{grid-template-columns:repeat(2,1fr)}{% endif %}
+  .footer-grid{grid-template-columns:1fr;gap:30px}
+  .footer-bottom{flex-direction:column;gap:8px;text-align:center}
+  .hero-btns{flex-direction:column;align-items:center}
+  .contact-split{grid-template-columns:1fr;gap:40px}
+  .form-row{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .trust-grid{grid-template-columns:repeat(2,1fr)}
+  {% if gallery_urls %}.gallery-grid{grid-template-columns:1fr}{% endif %}
+  .container{padding:0 16px}
+  .services{padding:60px 0}
+  .process{padding:60px 0}
+  .about{padding:60px 0}
+  .testimonials{padding:60px 0}
+  .cta{padding:60px 0}
+  {% if gallery_urls %}.gallery{padding:60px 0}{% endif %}
+}
+
+/* ═══ LAYOUT VARIANTS ═══════════════════════════════════ */
+
+{% if layout == 2 %}
+/* ── Variant 2: Bold & Dark ──────────────────────────── */
+body{font-family:'DM Sans',system-ui,sans-serif}
+h1,h2,h3{font-family:'Outfit','DM Sans',sans-serif;letter-spacing:-0.03em}
+:root{--bg-alt:#0f172a;--radius:16px;--radius-lg:24px}
+.section-title::after{width:80px;height:5px;border-radius:99px}
+.hero{min-height:85vh}
+.hero-overlay{background:linear-gradient(135deg,rgba(0,0,0,0.75) 0%,rgba(0,0,0,0.3) 100%)}
+.trust-strip{background:var(--brand-darker);border-bottom:none}
+.trust-item .trust-value{color:#fff}
+.trust-item .trust-label{color:rgba(255,255,255,0.7)}
+.trust-stars{color:#fbbf24}
+.services{background:#0f172a;padding:100px 0}
+.services .section-title h2{color:#fff}
+.services .section-title p{color:rgba(255,255,255,0.6)}
+.services .section-title::after{background:#fff}
+.service-card{background:#1e293b;border:1px solid rgba(255,255,255,0.08);border-radius:16px}
+.service-card h3{color:#fff}
+.service-card p{color:rgba(255,255,255,0.6)}
+.service-card .service-icon svg{color:#fff}
+.service-card .service-icon{background:var(--brand)}
+.service-card:hover{border-color:var(--brand);transform:translateY(-6px);box-shadow:0 20px 50px rgba(0,0,0,0.4)}
+.process{background:#fff;clip-path:none;padding:100px 0}
+.about{background:#f1f5f9}
+.about-img{border-radius:20px}
+{% if gallery_urls %}.gallery{background:#0f172a;padding:100px 0}
+.gallery .section-title h2{color:#fff}
+.gallery .section-title p{color:rgba(255,255,255,0.6)}
+.gallery .section-title::after{background:#fff}
+.gallery-item{border-radius:16px}{% endif %}
+.testimonials{background:#f8fafc}
+.review-card{border-radius:20px;border:none;box-shadow:0 8px 30px rgba(0,0,0,0.08)}
+.faq{background:#f1f5f9}
+.nav-cta{border-radius:12px}
+.btn{border-radius:12px}
+.footer{background:#0f172a}
+{% endif %}
+
+{% if layout == 3 %}
+/* ── Variant 3: Elegant & Warm ───────────────────────── */
+body{font-family:'Inter',system-ui,sans-serif}
+h1,h2,h3{font-family:'Playfair Display','Georgia',serif;letter-spacing:-0.01em}
+:root{--bg-alt:#faf9f6;--radius:8px;--radius-lg:12px}
+.section-title::after{width:40px;height:3px;border-radius:0}
+.hero{min-height:90vh}
+.hero-overlay{background:linear-gradient(180deg,rgba(0,0,0,0.2) 0%,rgba(0,0,0,0.7) 100%)}
+.hero h1{font-style:italic;font-weight:700}
+.trust-strip{background:#fff;border-bottom:2px solid #f0ebe3;padding:50px 0}
+.trust-item .trust-value{color:var(--brand)}
+.services{background:#faf9f6}
+.service-card{border-radius:4px;border:none;border-bottom:3px solid var(--brand);box-shadow:var(--shadow-md)}
+.service-card .service-icon{background:transparent;border:2px solid var(--brand)}
+.service-card:hover{transform:translateY(-4px);border-bottom-color:var(--brand-dark)}
+.process{clip-path:none;background:#fff;border-top:1px solid #e8e3da;border-bottom:1px solid #e8e3da}
+.process-step .step-num{border:2px solid var(--brand);background:transparent;color:var(--brand)}
+.about{background:#faf9f6}
+.about-img{border-radius:4px;box-shadow:12px 12px 0 var(--brand-light)}
+{% if gallery_urls %}.gallery{background:#fff}
+.gallery-item{border-radius:4px}{% endif %}
+.testimonials{background:#faf9f6}
+.review-card{border-radius:4px;border-left:4px solid var(--brand);border-top:none;border-right:none;border-bottom:none}
+.review-card .review-quote{color:var(--brand);opacity:0.3}
+.faq{background:#fff;border-top:1px solid #e8e3da}
+.faq-question{font-family:'Playfair Display',serif}
+.btn{border-radius:4px}
+.nav-cta{border-radius:4px}
+.navbar.scrolled{border-bottom:2px solid var(--brand)}
+.lead-form{border-radius:4px;border:1px solid #e8e3da}
+.form-group input,.form-group select,.form-group textarea{border-radius:4px}
+.form-submit-btn{border-radius:4px}
+.floating-cta a{border-radius:4px}
+.footer{background:#1a1a2e}
+{% endif %}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAVBAR ═════════════════════════════════════════ -->
+<nav class="navbar" id="navbar">
+  <div class="container">
+    <a href="#" class="nav-brand">{% if logo_url %}<img src="{{ logo_url }}" alt="{{ business_name }}" class="nav-logo-img">{% else %}<span class="nav-logo">{{ business_name[0] }}</span>{% endif %}{{ business_name }}</a>
+    <input type="checkbox" id="nav-check">
+    <label for="nav-check" class="nav-toggle"><span></span><span></span><span></span></label>
+    <label for="nav-check" class="nav-backdrop"></label>
+    <div class="nav-links">
+      <a href="#services">Services</a>
+      <a href="#about">About</a>
+      {% if gallery_urls %}<a href="#gallery">Portfolio</a>{% endif %}
+      <a href="#testimonials">Reviews</a>
+      {% if phone %}
+      <a href="tel:{{ phone | replace('(','') | replace(')','') | replace(' ','-') }}" class="nav-cta">Call {{ phone }}</a>
+      {% else %}
+      <a href="#contact" class="nav-cta">Get a Quote</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══════════════════════════════════════════ -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <h1>{{ headline }}</h1>
+    <p class="hero-sub">
+      {% if service_area %}Proudly serving {{ service_area }} &mdash; {% endif %}Your trusted {{ trade | lower }} for quality you can see and feel.
+    </p>
+    <div class="hero-btns">
+      {% if phone %}
+      <a href="tel:{{ phone | replace('(','') | replace(')','') | replace(' ','-') }}" class="btn btn-primary">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        Call {{ phone }}
+      </a>
+      {% endif %}
+      <a href="#contact" class="btn btn-outline">Get Your Free Quote</a>
+    </div>
+  </div>
+  <a href="#trust" class="hero-scroll">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+  </a>
+</section>
+
+<!-- ═══ TRUST STRIP ════════════════════════════════════ -->
+<section class="trust-strip" id="trust">
+  <div class="container">
+    <div class="trust-grid">
+      {% for stat in stats %}
+      <div class="trust-item reveal">
+        {% if stat.get('is_stars') %}
+        <div class="trust-value" data-count="{{ stat.value }}">0 <span class="trust-stars">&#9733;</span></div>
+        {% else %}
+        <div class="trust-value" data-count="{{ stat.value }}">0</div>
+        {% endif %}
+        <div class="trust-label">{{ stat.label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SERVICES ═══════════════════════════════════════ -->
+<section class="services" id="services">
+  <div class="container">
+    <div class="section-title reveal">
+      <h2>Our Services</h2>
+      <p>Professional {{ trade | lower }} solutions tailored to your needs</p>
+    </div>
+    <div class="services-grid">
+      {% for svc in services %}
+      <div class="service-card reveal">
+        <div class="service-icon">{{ service_icons[loop.index0] | safe }}</div>
+        <h3>{{ svc.name if svc is mapping else svc }}</h3>
+        <p>{{ svc.desc if svc is mapping else 'Professional service delivered with quality and care.' }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROCESS ════════════════════════════════════════ -->
+<section class="process" id="process">
+  <div class="container">
+    <div class="section-title reveal">
+      <h2>How We Work</h2>
+      <p>A simple, hassle-free experience from start to finish</p>
+    </div>
+    <div class="process-grid">
+      {% for step in process_steps %}
+      <div class="process-step reveal">
+        <div class="step-num">{{ step.step }}</div>
+        <h3>{{ step.title }}</h3>
+        <p>{{ step.desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ABOUT ══════════════════════════════════════════ -->
+<section class="about" id="about">
+  <div class="container">
+    <div class="about-grid">
+      {% if about_url %}
+      <div class="about-img reveal">
+        <img src="{{ about_url }}" alt="{{ business_name }} team" loading="lazy">
+      </div>
+      {% endif %}
+      <div class="about-text reveal">
+        <h2>About {{ business_name }}</h2>
+        <p>{{ about_text }}</p>
+        <div class="about-badges">
+          {% if years_in_business %}
+          <span class="about-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            {% if years_in_business.isdigit() %}Est. {{ years_in_business }}{% else %}{{ years_in_business }}{% endif %}
+          </span>
+          {% endif %}
+          <span class="about-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Licensed &amp; Insured
+          </span>
+          <span class="about-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Free Estimates
+          </span>
+          <span class="about-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            Satisfaction Guaranteed
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ GALLERY ════════════════════════════════════════ -->
+{% if gallery_urls %}
+<section class="gallery" id="gallery">
+  <div class="container">
+    <div class="section-title reveal">
+      <h2>Our Work</h2>
+      <p>See the quality craftsmanship we deliver on every project</p>
+    </div>
+    <div class="gallery-grid">
+      {% for url in gallery_urls %}
+      <div class="gallery-item reveal">
+        <img src="{{ url }}" alt="{{ business_name }} project {{ loop.index }}" loading="lazy">
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ TESTIMONIALS ═══════════════════════════════════ -->
+<section class="testimonials" id="testimonials">
+  <div class="container">
+    <div class="section-title reveal">
+      <h2>What Our Customers Say</h2>
+      <p>Real reviews from real customers</p>
+    </div>
+    <div class="testimonials-grid">
+      {% for t in testimonials %}
+      <div class="testimonial-card reveal">
+        <div class="testimonial-stars">
+          {% for _ in range(t.rating) %}
+          <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          {% endfor %}
+        </div>
+        <p class="testimonial-text">"{{ t.text }}"</p>
+        <div class="testimonial-author">{{ t.name }}</div>
+        <div class="testimonial-project">{{ t.project }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SERVICE AREA ═══════════════════════════════════ -->
+{% if service_area %}
+<section class="service-area">
+  <div class="container">
+    <div class="sa-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+    </div>
+    <h2>Proudly Serving {{ service_area }}</h2>
+    <p>Local expertise, trusted by your neighbors.</p>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ FAQ ════════════════════════════════════════════ -->
+{% if faqs %}
+<section class="faq" id="faq">
+  <div class="container">
+    <div class="section-title">
+      <h2>Frequently Asked Questions</h2>
+      <p>Answers to common questions about our {{ trade | lower }} services</p>
+    </div>
+    <div class="faq-grid">
+      {% for faq in faqs %}
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFaq(this)">
+          {{ faq.q }}
+          <svg class="faq-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <div class="faq-answer"><p>{{ faq.a }}</p></div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ FLOATING CTA ═══════════════════════════════════ -->
+<div class="floating-cta" id="floatingCta">
+  <a href="#contact">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+    Get Your Free Quote
+  </a>
+</div>
+
+<!-- ═══ CONTACT / LEAD FORM ═════════════════════════════ -->
+<section class="cta" id="contact">
+  <div class="container">
+    <div class="contact-split">
+      <div class="contact-info-col">
+        <h2>Get Your Free Estimate</h2>
+        <p>Ready to start your project? Fill out the form and we'll get back to you within 24 hours with a detailed, no-obligation quote.</p>
+
+        {% if phone %}
+        <div class="contact-detail">
+          <div class="contact-icon-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Call Us Anytime</div>
+            <a href="tel:{{ phone | replace('(','') | replace(')','') | replace(' ','-') }}" style="color:rgba(255,255,255,0.9);text-decoration:none;font-size:1.15rem">{{ phone }}</a>
+          </div>
+        </div>
+        {% endif %}
+        {% if email %}
+        <div class="contact-detail">
+          <div class="contact-icon-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Email Us</div>
+            <a href="mailto:{{ email }}" style="color:rgba(255,255,255,0.9);text-decoration:none">{{ email }}</a>
+          </div>
+        </div>
+        {% endif %}
+        {% if service_area %}
+        <div class="contact-detail">
+          <div class="contact-icon-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Service Area</div>
+            <span style="color:rgba(255,255,255,0.9)">{{ service_area }}</span>
+          </div>
+        </div>
+        {% endif %}
+        <div class="contact-detail">
+          <div class="contact-icon-circle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Response Time</div>
+            <span style="color:rgba(255,255,255,0.9)">Within 24 hours</span>
+          </div>
+        </div>
+
+        <!-- Trust badges -->
+        {% if trust_points %}
+        <div class="contact-trust">
+          <h4 style="color:#fff;margin:0 0 12px;font-size:1rem;text-transform:uppercase;letter-spacing:1px;opacity:0.8">Why Choose Us</h4>
+          <ul class="trust-list">
+            {% for point in trust_points %}
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2.5" style="width:18px;height:18px;flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              {{ point }}
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+      </div>
+      <div class="contact-form-col">
+        <form class="lead-form" id="leadForm" onsubmit="return handleFormSubmit(event)">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="fname">Full Name *</label>
+              <input type="text" id="fname" name="name" placeholder="John Smith" required>
+            </div>
+            <div class="form-group">
+              <label for="fphone">Phone *</label>
+              <input type="tel" id="fphone" name="phone" placeholder="(555) 123-4567" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="femail">Email</label>
+            <input type="email" id="femail" name="email" placeholder="john@example.com">
+          </div>
+          <div class="form-group">
+            <label for="fservice">Service Needed</label>
+            <select id="fservice" name="service">
+              <option value="">Select a service...</option>
+              {% for svc in services %}
+              <option value="{{ svc.name }}">{{ svc.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="fmessage">Project Details</label>
+            <textarea id="fmessage" name="message" rows="3" placeholder="Tell us about your project..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary form-submit-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+            Get My Free Quote
+          </button>
+          <p class="form-disclaimer">No spam, no obligations. Your information is 100% secure.</p>
+        </form>
+        <div class="form-success" id="formSuccess" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2.5" style="width:48px;height:48px"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <h3 style="margin:16px 0 8px;color:var(--dark)">Thank You!</h3>
+          <p style="color:#666">We've received your request and will get back to you within 24 hours.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═════════════════════════════════════════ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">{% if logo_url %}<img src="{{ logo_url }}" alt="{{ business_name }}" class="footer-logo-img">{% else %}<span class="footer-logo">{{ business_name[0] }}</span>{% endif %}{{ business_name }}</div>
+        <p class="footer-desc">Your trusted {{ trade | lower }} committed to quality workmanship, honest pricing, and exceptional service. Proudly serving{% if service_area %} {{ service_area }}{% endif %} and surrounding areas.</p>
+      </div>
+      <div>
+        <h4>Quick Links</h4>
+        <div class="footer-links">
+          <a href="#services">Our Services</a>
+          <a href="#process">How We Work</a>
+          <a href="#about">About Us</a>
+          {% if gallery_urls %}<a href="#gallery">Portfolio</a>{% endif %}
+          <a href="#testimonials">Reviews</a>
+          <a href="#contact">Contact</a>
+        </div>
+      </div>
+      <div>
+        <h4>Contact Us</h4>
+        <div class="footer-links">
+          {% if phone %}
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            <a href="tel:{{ phone | replace('(','') | replace(')','') | replace(' ','-') }}">{{ phone }}</a>
+          </div>
+          {% endif %}
+          {% if email %}
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <a href="mailto:{{ email }}">{{ email }}</a>
+          </div>
+          {% endif %}
+          {% if service_area %}
+          <div class="footer-contact-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            {{ service_area }}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; {{ business_name }} &mdash; All rights reserved.</span>
+      <span>{{ trade }}</span>
+    </div>
+    <p class="demo-notice">This is a sample website created to showcase modern web design for {{ business_name }}.</p>
+  </div>
+</footer>
+
+<!-- ═══ SCRIPTS ════════════════════════════════════════ -->
+<script>
+// Navbar scroll effect + floating CTA
+const nav = document.getElementById('navbar');
+const floatingCta = document.getElementById('floatingCta');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+  // Show floating CTA after scrolling past hero
+  if (floatingCta) floatingCta.classList.toggle('show', window.scrollY > 500);
+});
+
+// Scroll reveal animations
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => {
+    if (e.isIntersecting) {
+      setTimeout(() => e.target.classList.add('visible'), i * 80);
+      observer.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+reveals.forEach(el => observer.observe(el));
+
+// Animated counting stats
+const counters = document.querySelectorAll('[data-count]');
+const counterObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (!entry.isIntersecting) return;
+    const el = entry.target;
+    const raw = el.dataset.count;
+    // Parse the numeric part (handles "1,200+", "20+", "5.0", "100%")
+    const match = raw.match(/([\d,.]+)/);
+    if (!match) { el.textContent = raw; return; }
+    const numStr = match[1].replace(/,/g, '');
+    const target = parseFloat(numStr);
+    const isDecimal = numStr.includes('.');
+    const prefix = raw.substring(0, raw.indexOf(match[1]));
+    const suffix = raw.substring(raw.indexOf(match[1]) + match[1].length);
+    const hasStar = el.querySelector('.trust-stars');
+    const duration = 1800;
+    const start = performance.now();
+    function step(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      let current = target * eased;
+      let display;
+      if (isDecimal) {
+        display = current.toFixed(1);
+      } else {
+        current = Math.floor(current);
+        display = current >= 1000 ? current.toLocaleString() : current.toString();
+      }
+      el.childNodes[0].textContent = prefix + display + suffix + (hasStar ? ' ' : '');
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+    counterObserver.unobserve(el);
+  });
+}, { threshold: 0.5 });
+counters.forEach(c => counterObserver.observe(c));
+
+// FAQ accordion
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const answer = item.querySelector('.faq-answer');
+  const isOpen = item.classList.contains('open');
+  // Close all others
+  document.querySelectorAll('.faq-item.open').forEach(i => {
+    i.classList.remove('open');
+    i.querySelector('.faq-answer').style.maxHeight = '0';
+  });
+  if (!isOpen) {
+    item.classList.add('open');
+    answer.style.maxHeight = answer.scrollHeight + 'px';
+  }
+}
+
+// Lead form submission
+function handleFormSubmit(e) {
+  e.preventDefault();
+  const form = document.getElementById('leadForm');
+  const success = document.getElementById('formSuccess');
+  // Simple client-side "submission" — owner configures backend later
+  form.style.display = 'none';
+  success.style.display = 'block';
+  // Scroll to success message
+  success.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  return false;
+}
+</script>
+</body>
+</html>
