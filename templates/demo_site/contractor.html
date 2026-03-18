@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ business_name }} | {{ trade }}</title>
+{% if meta_description %}<meta name="description" content="{{ meta_description }}">
+<meta property="og:title" content="{{ business_name }} | {{ trade }}">
+<meta property="og:description" content="{{ meta_description }}">
+<meta property="og:type" content="website">{% endif %}
 {% if logo_url %}<link rel="icon" type="image/png" href="{{ logo_url }}">
 <link rel="apple-touch-icon" href="{{ logo_url }}">{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -616,7 +620,7 @@ h1,h2,h3{font-family:'Playfair Display','Georgia',serif;letter-spacing:-0.01em}
   <div class="container">
     <div class="contact-split">
       <div class="contact-info-col">
-        <h2>Get Your Free Estimate</h2>
+        <h2>{% if cta_text %}{{ cta_text }}{% else %}Get Your Free Estimate{% endif %}</h2>
         <p>Ready to start your project? Fill out the form and we'll get back to you within 24 hours with a detailed, no-obligation quote.</p>
 
         {% if phone %}

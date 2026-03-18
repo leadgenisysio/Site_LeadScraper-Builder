@@ -11,6 +11,7 @@ import random
 
 from flask import render_template
 
+from outreach.content_writer import enhance_site_content
 from outreach.image_generator import (
     generate_about_image,
     generate_gallery_images,
@@ -624,6 +625,34 @@ def generate_demo_site(lead):
     process_steps = TRADE_PROCESS_STEPS.get(trade, _DEFAULT_PROCESS_STEPS)[:3]
     stats = TRADE_STATS.get(trade, _DEFAULT_STATS)[:4]
     service_icons = _get_icons(trade)
+    meta_description = ""
+    cta_text = ""
+
+    # ── AI Content Enhancement (Prompt Injection) ────────────────────
+    ai_content = enhance_site_content(
+        business_name=business_name,
+        trade=trade,
+        state=state,
+        scraped_about=about_text,
+        scraped_services=services,
+        scraped_tagline=headline,
+        service_area=service_area,
+        years_in_business=years_in_business,
+    )
+
+    if ai_content:
+        logger.info("AI content enhancement applied for %s", business_name)
+        # Override with AI-generated content (keeps scraped data as fallback)
+        if ai_content.get("headline"):
+            headline = ai_content["headline"]
+        if ai_content.get("about_text"):
+            about_text = ai_content["about_text"]
+        if ai_content.get("service_descriptions") and len(ai_content["service_descriptions"]) >= 4:
+            services = ai_content["service_descriptions"][:6]
+        if ai_content.get("meta_description"):
+            meta_description = ai_content["meta_description"]
+        if ai_content.get("cta_text"):
+            cta_text = ai_content["cta_text"]
 
     # ── Scraped images from their existing site ─────────────────────────
     scraped_gallery = site_content.get("gallery_images", [])
@@ -750,6 +779,8 @@ def generate_demo_site(lead):
         trust_points=trust_points,
         faqs=faqs,
         layout=layout,
+        meta_description=meta_description,
+        cta_text=cta_text,
     )
 
     return {"html": html, "images": images}
