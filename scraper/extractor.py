@@ -439,53 +439,92 @@ def _extract_testimonials(soup):
     """
     testimonials = []
 
-    # --- Strategy 1: Find a reviews/testimonials section by heading ---
-    review_section = None
-    for tag in soup.find_all(re.compile(r"^h[1-4]$", re.IGNORECASE)):
-        if _REVIEW_HEADINGS.search(tag.get_text(strip=True)):
-            review_section = tag
-            break
+    # --- Strategy 1: Direct CSS class matching (most reliable) ---
+    # Look for elements with review/testimonial classes ANYWHERE on the page
+    review_containers = []
+    for el in soup.find_all(["div", "article", "li", "section"]):
+        classes = " ".join(el.get("class", []))
+        # Match specific review item patterns (not generic containers)
+        if re.search(r"one-review|review-item|review-card|testimonial-item|testimonial-card|"
+                      r"single-review|single-testimonial|customer-review|review-block",
+                      classes, re.IGNORECASE):
+            review_containers.append(el)
 
-    search_areas = []
-    if review_section:
-        # Collect siblings until next heading
-        for sibling in review_section.find_next_siblings():
-            if sibling.name and re.match(r"^h[1-4]$", sibling.name, re.IGNORECASE):
-                break
-            search_areas.append(sibling)
-    else:
-        # No section heading found — search the whole page
-        search_areas = [soup]
+    # If we found specific review items, extract from those
+    if review_containers:
+        for el in review_containers:
+            # Get review text — look for content div or direct text
+            text = ""
+            content_div = el.find(class_=re.compile(r"review-content|review-text|testimonial-text|review-body", re.IGNORECASE))
+            if content_div:
+                text = content_div.get_text(separator=" ", strip=True)
+            if not text or len(text) < 20:
+                # Fallback: longest text block in the element
+                for child in el.find_all(["p", "div", "span"]):
+                    t = child.get_text(strip=True)
+                    if 20 < len(t) < 500 and len(t) > len(text):
+                        text = t
+            if not text or len(text) < 20:
+                continue
 
-    # --- Strategy 2: Look for common review markup patterns ---
-    for area in search_areas:
-        # Blockquotes (very common for testimonials)
-        for bq in area.find_all("blockquote"):
-            text = bq.get_text(separator=" ", strip=True)
+            # Get reviewer name
+            name_div = el.find(class_=re.compile(r"review-name|reviewer|author-name|customer-name", re.IGNORECASE))
+            name = name_div.get_text(strip=True) if name_div else _find_reviewer_name(el)
+            # Clean name (remove date parts like "John A, February 2025")
+            if "," in name:
+                parts = name.split(",")
+                # Keep only the name part (before the date)
+                name = parts[0].strip()
+
+            rating = _find_star_rating(el)
             if 20 < len(text) < 500:
-                name = _find_attribution(bq)
-                testimonials.append({"text": text, "name": name, "rating": 5})
+                testimonials.append({"text": text, "name": name, "rating": rating})
 
-        # Divs/articles with review-like classes
-        for el in area.find_all(["div", "article", "li", "section"]):
-            classes = " ".join(el.get("class", []))
-            if re.search(r"review|testimonial|quote|feedback", classes, re.IGNORECASE):
-                # Find the review text (longest paragraph-like text inside)
-                paragraphs = el.find_all(["p", "div", "span"])
-                best_text = ""
-                for p in paragraphs:
-                    t = p.get_text(strip=True)
-                    # Skip short fragments that are likely names/dates
-                    if 30 < len(t) < 500 and len(t) > len(best_text):
-                        best_text = t
-                if best_text:
-                    name = _find_reviewer_name(el)
-                    rating = _find_star_rating(el)
-                    testimonials.append({
-                        "text": best_text,
-                        "name": name,
-                        "rating": rating,
-                    })
+    # --- Strategy 2: Find reviews section by heading, then search siblings ---
+    if not testimonials:
+        review_section = None
+        for tag in soup.find_all(re.compile(r"^h[1-4]$", re.IGNORECASE)):
+            if _REVIEW_HEADINGS.search(tag.get_text(strip=True)):
+                review_section = tag
+                break
+
+        search_areas = []
+        if review_section:
+            # Try siblings first
+            for sibling in review_section.find_next_siblings():
+                if sibling.name and re.match(r"^h[1-4]$", sibling.name, re.IGNORECASE):
+                    break
+                search_areas.append(sibling)
+            # If no siblings had reviews, try the heading's parent container
+            if not search_areas:
+                parent = review_section.parent
+                if parent:
+                    search_areas = [parent]
+        else:
+            search_areas = [soup]
+
+        for area in search_areas:
+            # Blockquotes
+            for bq in area.find_all("blockquote"):
+                text = bq.get_text(separator=" ", strip=True)
+                if 20 < len(text) < 500:
+                    name = _find_attribution(bq)
+                    testimonials.append({"text": text, "name": name, "rating": 5})
+
+            # Divs with review-like classes
+            for el in area.find_all(["div", "article", "li", "section"]):
+                classes = " ".join(el.get("class", []))
+                if re.search(r"review|testimonial|quote|feedback", classes, re.IGNORECASE):
+                    paragraphs = el.find_all(["p", "div", "span"])
+                    best_text = ""
+                    for p in paragraphs:
+                        t = p.get_text(strip=True)
+                        if 30 < len(t) < 500 and len(t) > len(best_text):
+                            best_text = t
+                    if best_text:
+                        name = _find_reviewer_name(el)
+                        rating = _find_star_rating(el)
+                        testimonials.append({"text": best_text, "name": name, "rating": rating})
 
     # --- Strategy 3: Schema.org Review structured data ---
     for script in soup.find_all("script", type="application/ld+json"):
