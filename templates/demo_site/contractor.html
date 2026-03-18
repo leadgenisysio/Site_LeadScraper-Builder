@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ business_name }} | {{ trade }}</title>
+{% if logo_url %}<link rel="icon" type="image/png" href="{{ logo_url }}">
+<link rel="apple-touch-icon" href="{{ logo_url }}">{% endif %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&family=DM+Sans:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -68,7 +70,7 @@ p{font-size:1.05rem;color:var(--text-light)}
 .navbar .container{display:flex;align-items:center;justify-content:space-between}
 .nav-brand{font-size:1.4rem;font-weight:800;color:#fff;transition:color .35s;display:flex;align-items:center;gap:10px}
 .nav-logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--brand);color:#fff;border-radius:8px;font-size:1.2rem;font-weight:900;letter-spacing:-1px;flex-shrink:0}
-.nav-logo-img{width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0}
+.nav-logo-img{width:48px;height:48px;object-fit:contain;border-radius:10px;flex-shrink:0}
 .navbar.scrolled .nav-brand{color:var(--text)}
 .nav-links{display:flex;align-items:center;gap:32px}
 .nav-links a{color:rgba(255,255,255,0.85);font-weight:500;font-size:0.95rem;transition:color .35s}
@@ -250,7 +252,7 @@ p{font-size:1.05rem;color:var(--text-light)}
 .footer h4{color:#fff;font-size:1.1rem;margin-bottom:16px;font-weight:700}
 .footer-brand{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:10px}
 .footer-logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--brand);color:#fff;border-radius:8px;font-size:1.2rem;font-weight:900;flex-shrink:0}
-.footer-logo-img{width:40px;height:40px;object-fit:contain;border-radius:8px;flex-shrink:0}
+.footer-logo-img{width:48px;height:48px;object-fit:contain;border-radius:10px;flex-shrink:0}
 .footer-desc{font-size:0.95rem;line-height:1.6;color:rgba(255,255,255,0.6)}
 .footer-links a{display:block;padding:4px 0;color:rgba(255,255,255,0.6);font-size:0.95rem;transition:color .2s}
 .footer-links a:hover{color:var(--brand)}

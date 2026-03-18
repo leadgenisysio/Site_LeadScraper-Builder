@@ -142,25 +142,38 @@ def _extract_emails_from_soup(soup, raw_html):
 
 
 def _extract_phones_from_soup(soup):
-    """Extract valid phone numbers from a BeautifulSoup object."""
-    phones = set()
+    """Extract valid phone numbers, preferring visible ones over hidden tel: links."""
+    from collections import Counter
+    phone_counts = Counter()
+
     text = soup.get_text(separator=" ", strip=True)
 
-    # From tel: links
+    # From tel: links — ONLY if the link has visible text (skip hidden/tracking links)
     for a_tag in soup.find_all("a", href=True):
         href = a_tag["href"]
         if href.startswith("tel:"):
+            link_text = a_tag.get_text(strip=True)
+            # Skip hidden tel: links (no visible text, or text doesn't look like a phone)
+            if not link_text or len(link_text) < 7:
+                continue
             raw_phone = href.replace("tel:", "").strip()
             normalized = _normalize_phone(raw_phone)
             if normalized:
-                phones.add(normalized)
-    # From page text
+                phone_counts[normalized] += 2  # Weight tel: links higher
+
+    # From visible page text (most reliable — what the user actually sees)
     for match in PHONE_PATTERN.findall(text):
         normalized = _normalize_phone(match)
         if normalized:
-            phones.add(normalized)
+            phone_counts[normalized] += 1
 
-    return phones
+    # Return the most frequently appearing phone number(s)
+    if not phone_counts:
+        return set()
+
+    # Sort by frequency, return top numbers
+    sorted_phones = [p for p, _ in phone_counts.most_common(3)]
+    return set(sorted_phones)
 
 
 def _find_contact_page_urls(base_url, soup):
@@ -736,13 +749,46 @@ def _find_content_page_urls(base_url, soup):
     return list(found)[:8]
 
 
+def _extract_logo_url(soup, base_url):
+    """Try to find the site's logo image URL."""
+    parsed = urlparse(base_url)
+
+    # Strategy 1: Look for <img> with logo-related attributes
+    for img in soup.find_all("img"):
+        src = img.get("src") or img.get("data-src") or ""
+        alt = img.get("alt", "").lower()
+        classes = " ".join(img.get("class", [])).lower()
+        img_id = (img.get("id") or "").lower()
+        parent_classes = " ".join(img.parent.get("class", [])).lower() if img.parent else ""
+
+        if any(kw in (src.lower() + " " + alt + " " + classes + " " + img_id + " " + parent_classes)
+               for kw in ["logo", "brand", "site-logo", "header-logo", "navbar-logo"]):
+            if src and not src.startswith("data:"):
+                abs_url = urljoin(base_url, src)
+                return abs_url
+
+    # Strategy 2: Check <link rel="icon"> for a high-res favicon/icon
+    for link in soup.find_all("link", rel=True):
+        rels = link.get("rel", [])
+        if isinstance(rels, str):
+            rels = [rels]
+        if any(r in ["apple-touch-icon", "icon"] for r in rels):
+            href = link.get("href", "")
+            sizes = link.get("sizes", "")
+            # Prefer larger icons (apple-touch-icon is usually 180x180)
+            if href and "apple-touch-icon" in rels:
+                return urljoin(base_url, href)
+
+    return None
+
+
 def _extract_site_content(soup, raw_html, base_url=""):
     """Extract structured content from a webpage for demo site generation.
 
     Returns a dict with:
         services_text, about_text, tagline, service_area,
         primary_color, years_in_business, services_list,
-        services_with_desc, testimonials, gallery_images
+        services_with_desc, testimonials, gallery_images, logo_url
     """
     return {
         "services_text": _extract_section_text(soup, _SERVICES_HEADINGS),
@@ -755,6 +801,7 @@ def _extract_site_content(soup, raw_html, base_url=""):
         "services_with_desc": _extract_service_descriptions(soup),
         "testimonials": _extract_testimonials(soup),
         "gallery_images": _extract_gallery_images(soup, base_url),
+        "logo_url": _extract_logo_url(soup, base_url),
     }
 
 
@@ -765,7 +812,7 @@ def _merge_site_content(primary, secondary):
     Lists (testimonials, gallery_images) are extended.
     """
     for key in ("services_text", "about_text", "tagline", "service_area",
-                "primary_color", "years_in_business"):
+                "primary_color", "years_in_business", "logo_url"):
         if not primary.get(key) and secondary.get(key):
             primary[key] = secondary[key]
 
@@ -826,19 +873,38 @@ def extract_contact_info(url):
     og = soup.find("meta", property="og:site_name")
     if og and og.get("content"):
         business_name = og["content"].strip()
-    # Fallback to <title>
+    # Fallback to <title> — pick the best segment
     if not business_name and soup.title and soup.title.string:
         raw_title = soup.title.string.strip()
-        # Clean common suffixes like " | Home", " - Welcome"
-        business_name = re.split(r"\s*[|\-\u2013\u2014]\s*", raw_title)[0].strip()
+        parts = re.split(r"\s*[|\u2013\u2014]\s*", raw_title)
+        if len(parts) == 1:
+            parts = re.split(r"\s*-\s*", raw_title)
+        # Filter out generic segments (locations, "Home", service descriptions)
+        _generic = re.compile(
+            r"^(home|welcome|official|best|top|find|#?\d|solar panel install|"
+            r"residential|commercial|services? in|contractor in|near me)",
+            re.IGNORECASE,
+        )
+        candidates = [p.strip() for p in parts if p.strip() and len(p.strip()) > 2
+                       and not _generic.match(p.strip())]
+        if candidates:
+            # Prefer shorter, title-case-looking segments (likely the actual business name)
+            candidates.sort(key=lambda c: (len(c) > 50, not any(w[0].isupper() for w in c.split() if w), len(c)))
+            business_name = candidates[0]
+        else:
+            business_name = parts[0].strip()
     # Fallback to first <h1>
     if not business_name:
         h1 = soup.find("h1")
         if h1:
-            business_name = h1.get_text(strip=True)
-    # Fallback to domain name
+            h1_text = h1.get_text(strip=True)
+            if len(h1_text) < 80:  # Skip overly long H1s (likely descriptions)
+                business_name = h1_text
+    # Fallback to domain name (clean up TLD)
     if not business_name:
-        business_name = urlparse(url).netloc.replace("www.", "")
+        domain = urlparse(url).netloc.replace("www.", "")
+        # Try to make domain look like a name: "acmeroofing.com" → "Acmeroofing"
+        business_name = domain.split(".")[0].title()
 
     # --- Extract from homepage ---
     emails = _extract_emails_from_soup(soup, resp.text)

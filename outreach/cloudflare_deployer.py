@@ -28,7 +28,7 @@ def _slugify(name: str) -> str:
 
 def _run_wrangler(*args, env_extra=None):
     """Run a Wrangler CLI command and return (stdout, stderr, returncode)."""
-    cmd = ["npx", "wrangler"] + list(args)
+    cmd = ["wrangler.cmd"] + list(args)
     env = os.environ.copy()
     env["CLOUDFLARE_API_TOKEN"] = CLOUDFLARE_API_TOKEN
     env["CLOUDFLARE_ACCOUNT_ID"] = CLOUDFLARE_ACCOUNT_ID
@@ -39,11 +39,13 @@ def _run_wrangler(*args, env_extra=None):
     result = subprocess.run(
         cmd,
         capture_output=True,
-        text=True,
         timeout=120,
         env=env,
+        shell=True,
     )
-    return result.stdout, result.stderr, result.returncode
+    stdout = result.stdout.decode("utf-8", errors="replace") if result.stdout else ""
+    stderr = result.stderr.decode("utf-8", errors="replace") if result.stderr else ""
+    return stdout, stderr, result.returncode
 
 
 def is_configured() -> bool:
@@ -204,7 +206,6 @@ def list_sites() -> list[dict]:
     resp = requests.get(
         f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/pages/projects",
         headers=headers,
-        params={"per_page": 100},
         timeout=30,
     )
     resp.raise_for_status()

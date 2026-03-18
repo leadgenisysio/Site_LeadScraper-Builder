@@ -380,29 +380,31 @@ def generate_gallery_images(trade: str, count: int = 4) -> list[bytes | None]:
 
 
 def generate_logo(trade: str, business_name: str) -> bytes | None:
-    """Generate a simple icon-style logo mark for a business.
+    """Generate a logo mark for a business.
 
-    Returns PNG bytes (with transparency) or None on failure.
+    Returns PNG bytes at 512x512 or None on failure.
     """
     trade_lower = trade.lower()
     prompt = (
-        f"Design a minimal, modern logo icon for '{business_name}', a professional "
-        f"{trade_lower} company. The logo should be a simple, clean icon mark — NOT text. "
-        f"Use a single recognizable symbol related to {trade_lower} work. "
-        f"Flat design, solid colors, no gradients, no shadows, no background. "
-        f"Professional and corporate feel. White icon on transparent background. "
-        f"Think of app icons or favicon-style marks. Square aspect ratio."
+        f"Create a professional logo for '{business_name}', a {trade_lower} company. "
+        f"The logo should include the company initials or a simple icon related to "
+        f"{trade_lower}. Bold, clean design with strong contrast. "
+        f"Modern and memorable. Use a solid colored background shape "
+        f"(circle, rounded square, or shield). The icon/text should be white "
+        f"on the colored background. High resolution, crisp edges. "
+        f"Think of a professional brand mark you'd see on a truck or uniform."
     )
     img_bytes = generate_image(prompt, aspect_ratio="1:1")
     if img_bytes:
-        # Keep as PNG for transparency support
         try:
             from PIL import Image as PILImage
             img = PILImage.open(io.BytesIO(img_bytes))
-            # Resize to a reasonable logo size (200x200)
-            img = img.resize((200, 200), PILImage.LANCZOS)
+            if img.mode in ("RGBA", "P"):
+                img = img.convert("RGB")
+            # Resize to 512x512 for crisp display on retina screens
+            img = img.resize((512, 512), PILImage.LANCZOS)
             buf = io.BytesIO()
-            img.save(buf, format="PNG")
+            img.save(buf, format="PNG", quality=95)
             return buf.getvalue()
         except (ImportError, Exception):
             return img_bytes

@@ -636,15 +636,20 @@ def generate_demo_site(lead):
     about_url = ""
     gallery_urls = []
 
-    if images_configured():
-        logger.info("Generating AI images for %s (%s)", business_name, trade)
-
-        # Logo generation
+    # ── Logo: scraped > AI-generated > monogram fallback ────────────
+    scraped_logo = site_content.get("logo_url", "")
+    if scraped_logo:
+        logo_url = scraped_logo
+        logger.info("Using scraped logo from their site: %s", scraped_logo[:60])
+    elif images_configured():
         logo_bytes = generate_logo(trade, business_name)
         if logo_bytes:
             images["logo.png"] = logo_bytes
             logo_url = "./img/logo.png"
             logger.info("AI logo generated for %s", business_name)
+
+    if images_configured():
+        logger.info("Generating AI images for %s (%s)", business_name, trade)
 
         # Hero: use first scraped gallery image if large enough, else AI-generate
         if has_scraped_gallery and len(scraped_gallery) >= 4:
