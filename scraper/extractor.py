@@ -821,13 +821,178 @@ def _extract_logo_url(soup, base_url):
     return None
 
 
+def _extract_certifications(soup):
+    """Extract certifications, accreditations, and industry badges.
+
+    Returns a list of certification/badge names found on the page.
+    """
+    text = soup.get_text(separator=" ", strip=True)
+    text_lower = text.lower()
+
+    # Known certification/accreditation patterns for contractors
+    CERT_PATTERNS = {
+        # Roofing
+        "GAF Master Elite": r"gaf\s*master\s*elite",
+        "GAF Certified": r"gaf\s*certif",
+        "Owens Corning Preferred": r"owens\s*corning\s*prefer",
+        "CertainTeed SELECT": r"certainteed\s*select",
+        "HAAG Certified": r"haag\s*certif",
+        # Solar
+        "NABCEP Certified": r"nabcep",
+        "Tesla Powerwall Certified": r"tesla\s*powerwall\s*certif",
+        "SunPower Elite Dealer": r"sunpower\s*elite",
+        "Enphase Installer": r"enphase\s*(?:certif|install|partner)",
+        # General
+        "BBB Accredited": r"bbb\s*accredit|better\s*business\s*bureau",
+        "BBB A+ Rating": r"bbb\s*a\+|a\+\s*(?:rated|rating)\s*(?:with\s*)?bbb",
+        "Home Advisor": r"home\s*advisor|homeadvisor",
+        "Angi Certified": r"angi\s*certif|angie.s?\s*list",
+        "EPA Certified": r"epa\s*certif|epa\s*lead",
+        "OSHA Certified": r"osha\s*(?:certif|compli|train)",
+        "NATE Certified": r"nate\s*certif",  # HVAC
+        "Energy Star Partner": r"energy\s*star\s*partner",
+        "LEED Certified": r"leed\s*(?:certif|accred)",
+        # Insurance/licensing
+        "Fully Licensed": r"fully\s*licensed",
+        "Fully Insured": r"fully\s*insured",
+        "Bonded": r"(?:fully\s*)?bonded",
+    }
+
+    found = []
+    for cert_name, pattern in CERT_PATTERNS.items():
+        if re.search(pattern, text_lower):
+            found.append(cert_name)
+
+    return found[:8]
+
+
+def _extract_brands(soup):
+    """Extract brand/manufacturer partnerships mentioned on the page.
+
+    Returns a list of brand names.
+    """
+    text = soup.get_text(separator=" ", strip=True)
+    text_lower = text.lower()
+
+    BRAND_PATTERNS = {
+        # Roofing materials
+        "GAF": r"\bgaf\b",
+        "Owens Corning": r"owens\s*corning",
+        "CertainTeed": r"certainteed",
+        "Tamko": r"\btamko\b",
+        "IKO": r"\biko\b",
+        "Atlas Roofing": r"atlas\s*roofing",
+        # Solar
+        "SunPower": r"sunpower",
+        "Enphase": r"enphase",
+        "Tesla Solar": r"tesla\s*(?:solar|powerwall)",
+        "SolarEdge": r"solaredge",
+        "LG Solar": r"lg\s*solar",
+        "Panasonic Solar": r"panasonic\s*(?:solar|evergreen)",
+        "Generac": r"\bgenerac\b",
+        # HVAC
+        "Carrier": r"\bcarrier\b",
+        "Trane": r"\btrane\b",
+        "Lennox": r"\blennox\b",
+        "Rheem": r"\brheem\b",
+        "Goodman": r"\bgoodman\b",
+        "Daikin": r"\bdaikin\b",
+        "Mitsubishi Electric": r"mitsubishi\s*electric",
+        # Plumbing
+        "Rinnai": r"\brinnai\b",
+        "Navien": r"\bnavien\b",
+        "Bradford White": r"bradford\s*white",
+        # General
+        "Home Depot": r"home\s*depot",
+        "Lowe's": r"\blowe.?s\b",
+    }
+
+    found = []
+    for brand_name, pattern in BRAND_PATTERNS.items():
+        if re.search(pattern, text_lower):
+            found.append(brand_name)
+
+    return found[:6]
+
+
+def _extract_social_links(soup, base_url):
+    """Extract social media profile URLs."""
+    social_domains = {
+        "facebook": "facebook.com",
+        "instagram": "instagram.com",
+        "twitter": "twitter.com",
+        "x": "x.com",
+        "linkedin": "linkedin.com",
+        "youtube": "youtube.com",
+        "tiktok": "tiktok.com",
+        "yelp": "yelp.com",
+        "nextdoor": "nextdoor.com",
+        "google": "google.com/maps",
+    }
+
+    found = {}
+    for a_tag in soup.find_all("a", href=True):
+        href = a_tag["href"].lower()
+        for platform, domain in social_domains.items():
+            if domain in href and platform not in found:
+                found[platform] = a_tag["href"]
+
+    return found
+
+
+def _extract_aggregate_rating(soup):
+    """Extract aggregate review rating from Schema.org JSON-LD data.
+
+    Returns dict with keys: rating, review_count, or empty dict.
+    """
+    for script in soup.find_all("script", type="application/ld+json"):
+        try:
+            data = json.loads(script.string or "")
+            items = [data] if isinstance(data, dict) else (data if isinstance(data, list) else [])
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                agg = item.get("aggregateRating")
+                if isinstance(agg, dict):
+                    rating = agg.get("ratingValue")
+                    count = agg.get("reviewCount") or agg.get("ratingCount")
+                    if rating:
+                        return {
+                            "rating": str(rating),
+                            "review_count": str(count) if count else "",
+                        }
+        except (json.JSONDecodeError, TypeError):
+            continue
+    return {}
+
+
+def _extract_business_hours(soup):
+    """Extract business hours from the page."""
+    text = soup.get_text(separator=" ", strip=True)
+
+    # Look for common patterns
+    hours_patterns = [
+        re.compile(r"(?:hours|schedule|open)\s*:?\s*((?:mon|tue|wed|thu|fri|sat|sun).{10,80})", re.IGNORECASE),
+        re.compile(r"((?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*[-–:]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm).{5,60})", re.IGNORECASE),
+        re.compile(r"((?:M-F|Mon-Fri|Monday-Friday)\s*:?\s*\d{1,2}(?::\d{2})?\s*(?:am|pm)\s*[-–]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm))", re.IGNORECASE),
+    ]
+
+    for pattern in hours_patterns:
+        match = pattern.search(text)
+        if match:
+            return match.group(1).strip()[:100]
+
+    # Check for 24/7
+    if re.search(r"24\s*/?\s*7|twenty.four.seven|24\s*hours?\s*(?:a\s*day|service)", text, re.IGNORECASE):
+        return "24/7 Emergency Service Available"
+
+    return ""
+
+
 def _extract_site_content(soup, raw_html, base_url=""):
     """Extract structured content from a webpage for demo site generation.
 
-    Returns a dict with:
-        services_text, about_text, tagline, service_area,
-        primary_color, years_in_business, services_list,
-        services_with_desc, testimonials, gallery_images, logo_url
+    Returns a dict with all extractable content fields.
     """
     return {
         "services_text": _extract_section_text(soup, _SERVICES_HEADINGS),
@@ -841,6 +1006,11 @@ def _extract_site_content(soup, raw_html, base_url=""):
         "testimonials": _extract_testimonials(soup),
         "gallery_images": _extract_gallery_images(soup, base_url),
         "logo_url": _extract_logo_url(soup, base_url),
+        "certifications": _extract_certifications(soup),
+        "brands": _extract_brands(soup),
+        "social_links": _extract_social_links(soup, base_url),
+        "aggregate_rating": _extract_aggregate_rating(soup),
+        "business_hours": _extract_business_hours(soup),
     }
 
 
@@ -851,7 +1021,8 @@ def _merge_site_content(primary, secondary):
     Lists (testimonials, gallery_images) are extended.
     """
     for key in ("services_text", "about_text", "tagline", "service_area",
-                "primary_color", "years_in_business", "logo_url"):
+                "primary_color", "years_in_business", "logo_url",
+                "business_hours"):
         if not primary.get(key) and secondary.get(key):
             primary[key] = secondary[key]
 
@@ -883,6 +1054,25 @@ def _merge_site_content(primary, secondary):
             if url not in existing and len(primary.get("gallery_images", [])) < 8:
                 primary.setdefault("gallery_images", []).append(url)
                 existing.add(url)
+
+    # Merge certifications and brands (deduplicate)
+    for key in ("certifications", "brands"):
+        if secondary.get(key):
+            existing = set(x.lower() for x in primary.get(key, []))
+            for item in secondary[key]:
+                if item.lower() not in existing:
+                    primary.setdefault(key, []).append(item)
+                    existing.add(item.lower())
+
+    # Merge social links (don't overwrite)
+    if secondary.get("social_links"):
+        for platform, url in secondary["social_links"].items():
+            if platform not in primary.get("social_links", {}):
+                primary.setdefault("social_links", {})[platform] = url
+
+    # Merge aggregate rating (prefer one with review count)
+    if secondary.get("aggregate_rating") and not primary.get("aggregate_rating"):
+        primary["aggregate_rating"] = secondary["aggregate_rating"]
 
     return primary
 

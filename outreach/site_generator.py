@@ -660,6 +660,24 @@ def generate_demo_site(lead):
         if ai_content.get("unique_selling_points"):
             unique_selling_points = ai_content["unique_selling_points"][:4]
 
+    # ── Scraped enrichment data ──────────────────────────────────────
+    certifications = site_content.get("certifications", [])
+    brands = site_content.get("brands", [])
+    social_links = site_content.get("social_links", {})
+    aggregate_rating = site_content.get("aggregate_rating", {})
+    business_hours = site_content.get("business_hours", "")
+
+    # Use real aggregate rating in trust strip if available
+    if aggregate_rating.get("rating"):
+        for i, stat in enumerate(stats):
+            if stat.get("is_stars"):
+                stats[i] = {
+                    "value": aggregate_rating["rating"],
+                    "label": f"Google Rating ({aggregate_rating.get('review_count', '')} reviews)".strip(),
+                    "is_stars": True,
+                }
+                break
+
     # ── Scraped images from their existing site ─────────────────────────
     scraped_gallery = site_content.get("gallery_images", [])
     has_scraped_gallery = len(scraped_gallery) >= 2
@@ -789,6 +807,10 @@ def generate_demo_site(lead):
         cta_text=cta_text,
         subheadline=subheadline,
         unique_selling_points=unique_selling_points,
+        certifications=certifications,
+        brands=brands,
+        social_links=social_links,
+        business_hours=business_hours,
     )
 
     return {"html": html, "images": images}
