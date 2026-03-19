@@ -74,7 +74,7 @@ p{font-size:1.05rem;color:var(--text-light)}
 .navbar .container{display:flex;align-items:center;justify-content:space-between}
 .nav-brand{font-size:1.4rem;font-weight:800;color:#fff;transition:color .35s;display:flex;align-items:center;gap:10px}
 .nav-logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--brand);color:#fff;border-radius:8px;font-size:1.2rem;font-weight:900;letter-spacing:-1px;flex-shrink:0}
-.nav-logo-img{width:48px;height:48px;object-fit:contain;border-radius:10px;flex-shrink:0}
+.nav-logo-img{height:44px;max-width:160px;width:auto;object-fit:contain;flex-shrink:0}
 .navbar.scrolled .nav-brand{color:var(--text)}
 .nav-links{display:flex;align-items:center;gap:32px}
 .nav-links a{color:rgba(255,255,255,0.85);font-weight:500;font-size:0.95rem;transition:color .35s}
@@ -256,7 +256,7 @@ p{font-size:1.05rem;color:var(--text-light)}
 .footer h4{color:#fff;font-size:1.1rem;margin-bottom:16px;font-weight:700}
 .footer-brand{font-size:1.3rem;font-weight:800;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:10px}
 .footer-logo{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;background:var(--brand);color:#fff;border-radius:8px;font-size:1.2rem;font-weight:900;flex-shrink:0}
-.footer-logo-img{width:48px;height:48px;object-fit:contain;border-radius:10px;flex-shrink:0}
+.footer-logo-img{height:44px;max-width:160px;width:auto;object-fit:contain;flex-shrink:0}
 .footer-desc{font-size:0.95rem;line-height:1.6;color:rgba(255,255,255,0.6)}
 .footer-links a{display:block;padding:4px 0;color:rgba(255,255,255,0.6);font-size:0.95rem;transition:color .2s}
 .footer-links a:hover{color:var(--brand)}
@@ -418,7 +418,7 @@ h1,h2,h3{font-family:'Playfair Display','Georgia',serif;letter-spacing:-0.01em}
   <div class="hero-content">
     <h1>{{ headline }}</h1>
     <p class="hero-sub">
-      {% if service_area %}Proudly serving {{ service_area }} &mdash; {% endif %}Your trusted {{ trade | lower }} for quality you can see and feel.
+      {% if subheadline %}{{ subheadline }}{% elif service_area %}Proudly serving {{ service_area }} &mdash; Your trusted {{ trade | lower }} for quality you can see and feel.{% else %}Your trusted {{ trade | lower }} for quality you can see and feel.{% endif %}
     </p>
     <div class="hero-btns">
       {% if phone %}
@@ -504,24 +504,33 @@ h1,h2,h3{font-family:'Playfair Display','Georgia',serif;letter-spacing:-0.01em}
         <h2>About {{ business_name }}</h2>
         <p>{{ about_text }}</p>
         <div class="about-badges">
-          {% if years_in_business %}
-          <span class="about-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            {% if years_in_business.isdigit() %}Est. {{ years_in_business }}{% else %}{{ years_in_business }}{% endif %}
-          </span>
+          {% if unique_selling_points %}
+            {% for usp in unique_selling_points %}
+            <span class="about-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              {{ usp }}
+            </span>
+            {% endfor %}
+          {% else %}
+            {% if years_in_business %}
+            <span class="about-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              {% if years_in_business.isdigit() %}Est. {{ years_in_business }}{% else %}{{ years_in_business }}{% endif %}
+            </span>
+            {% endif %}
+            <span class="about-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Licensed &amp; Insured
+            </span>
+            <span class="about-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Free Estimates
+            </span>
+            <span class="about-badge">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+              Satisfaction Guaranteed
+            </span>
           {% endif %}
-          <span class="about-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Licensed &amp; Insured
-          </span>
-          <span class="about-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-            Free Estimates
-          </span>
-          <span class="about-badge">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
-            Satisfaction Guaranteed
-          </span>
         </div>
       </div>
     </div>
@@ -773,7 +782,7 @@ h1,h2,h3{font-family:'Playfair Display','Georgia',serif;letter-spacing:-0.01em}
       <span>&copy; {{ business_name }} &mdash; All rights reserved.</span>
       <span>{{ trade }}</span>
     </div>
-    <p class="demo-notice">This is a sample website created to showcase modern web design for {{ business_name }}.</p>
+    <p class="demo-notice">Website concept designed for {{ business_name }} by Lead Genisys.</p>
   </div>
 </footer>
 
@@ -801,15 +810,21 @@ const observer = new IntersectionObserver((entries) => {
 reveals.forEach(el => observer.observe(el));
 
 // Animated counting stats
+// Animated counting stats — trigger when even slightly visible
 const counters = document.querySelectorAll('[data-count]');
+// Set initial display to the actual value (in case animation doesn't fire)
+counters.forEach(el => {
+  const raw = el.dataset.count;
+  const hasStar = el.querySelector('.trust-stars');
+  el.childNodes[0].textContent = '0' + (hasStar ? ' ' : '');
+});
 const counterObserver = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (!entry.isIntersecting) return;
     const el = entry.target;
     const raw = el.dataset.count;
-    // Parse the numeric part (handles "1,200+", "20+", "5.0", "100%")
     const match = raw.match(/([\d,.]+)/);
-    if (!match) { el.textContent = raw; return; }
+    if (!match) { el.childNodes[0].textContent = raw; counterObserver.unobserve(el); return; }
     const numStr = match[1].replace(/,/g, '');
     const target = parseFloat(numStr);
     const isDecimal = numStr.includes('.');
@@ -820,23 +835,32 @@ const counterObserver = new IntersectionObserver((entries) => {
     const start = performance.now();
     function step(now) {
       const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
       let current = target * eased;
       let display;
-      if (isDecimal) {
-        display = current.toFixed(1);
-      } else {
+      if (isDecimal) { display = current.toFixed(1); }
+      else {
         current = Math.floor(current);
         display = current >= 1000 ? current.toLocaleString() : current.toString();
       }
       el.childNodes[0].textContent = prefix + display + suffix + (hasStar ? ' ' : '');
       if (progress < 1) requestAnimationFrame(step);
+      else el.childNodes[0].textContent = raw + (hasStar ? ' ' : ''); // Ensure final value is exact
     }
     requestAnimationFrame(step);
     counterObserver.unobserve(el);
   });
-}, { threshold: 0.5 });
+}, { threshold: 0.1 });
 counters.forEach(c => counterObserver.observe(c));
+// Fallback: if counters haven't fired after 5s, show values directly
+setTimeout(() => {
+  counters.forEach(el => {
+    if (el.childNodes[0].textContent.trim() === '0') {
+      const hasStar = el.querySelector('.trust-stars');
+      el.childNodes[0].textContent = el.dataset.count + (hasStar ? ' ' : '');
+    }
+  });
+}, 5000);
 
 // FAQ accordion
 function toggleFaq(btn) {

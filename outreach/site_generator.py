@@ -640,11 +640,15 @@ def generate_demo_site(lead):
         years_in_business=years_in_business,
     )
 
+    subheadline = ""
+    unique_selling_points = []
+
     if ai_content:
         logger.info("AI content enhancement applied for %s", business_name)
-        # Override with AI-generated content (keeps scraped data as fallback)
         if ai_content.get("headline"):
             headline = ai_content["headline"]
+        if ai_content.get("subheadline"):
+            subheadline = ai_content["subheadline"]
         if ai_content.get("about_text"):
             about_text = ai_content["about_text"]
         if ai_content.get("service_descriptions") and len(ai_content["service_descriptions"]) >= 4:
@@ -653,6 +657,8 @@ def generate_demo_site(lead):
             meta_description = ai_content["meta_description"]
         if ai_content.get("cta_text"):
             cta_text = ai_content["cta_text"]
+        if ai_content.get("unique_selling_points"):
+            unique_selling_points = ai_content["unique_selling_points"][:4]
 
     # ── Scraped images from their existing site ─────────────────────────
     scraped_gallery = site_content.get("gallery_images", [])
@@ -781,6 +787,8 @@ def generate_demo_site(lead):
         layout=layout,
         meta_description=meta_description,
         cta_text=cta_text,
+        subheadline=subheadline,
+        unique_selling_points=unique_selling_points,
     )
 
     return {"html": html, "images": images}

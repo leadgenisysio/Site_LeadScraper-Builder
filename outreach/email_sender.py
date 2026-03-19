@@ -274,7 +274,7 @@ def compose_outreach_email(lead, demo_url, variant_id=None):
 {issue_bullets_html}  </ul>
 
   <p style="margin:0 0 25px 0;color:#333333;font-size:15px;line-height:1.6;">
-    I put together a quick mockup of what a modern, professional website could look like for {biz}:
+    I put together a rough demo of what a redesigned website could look like for {biz} — take a look:
   </p>
 </td></tr>
 
@@ -284,7 +284,7 @@ def compose_outreach_email(lead, demo_url, variant_id=None):
   <tr><td align="center" style="background-color:#2563eb;border-radius:6px;">
     <a href="{demo_url}" target="_blank"
        style="display:inline-block;padding:14px 36px;color:#ffffff;font-size:16px;font-weight:bold;text-decoration:none;font-family:Arial,sans-serif;">
-      View Your Free Website Mockup
+      See Your Website Demo
     </a>
   </td></tr>
   </table>
@@ -293,7 +293,7 @@ def compose_outreach_email(lead, demo_url, variant_id=None):
 <!-- Closing -->
 <tr><td style="padding:0 40px 30px 40px;">
   <p style="margin:0 0 20px 0;color:#333333;font-size:15px;line-height:1.6;">
-    This is completely free -- just a sample to show what's possible. If you like what you see and want to chat about getting something like this live for your business, just reply to this email{f' or <a href="{SENDER_CALENDAR}" style="color:#2563eb;text-decoration:none;font-weight:bold;">book a quick call here</a>' if SENDER_CALENDAR else ''}.
+    This is just a rough concept to show what's possible — the real thing would be fully customized to your brand. If you're interested in seeing what a finished version could look like, just reply to this email{f' or <a href="{SENDER_CALENDAR}" style="color:#2563eb;text-decoration:none;font-weight:bold;">book a quick call here</a>' if SENDER_CALENDAR else ''}.
   </p>
 
   <p style="margin:0 0 5px 0;color:#333333;font-size:15px;line-height:1.6;">Best,</p>
@@ -321,11 +321,11 @@ Hi there,
 I came across {biz}'s website while looking for {trade} services in {state_name}, and I noticed a few things that might be holding you back from getting more customers:
 
 {issue_bullets_plain}
-I put together a quick mockup of what a modern, professional website could look like for {biz}:
+I put together a rough demo of what a redesigned website could look like for {biz} -- take a look:
 
 {demo_url}
 
-This is completely free -- just a sample to show what's possible. If you like what you see and want to chat about getting something like this live for your business, just reply to this email{f" or book a quick call: {SENDER_CALENDAR}" if SENDER_CALENDAR else ""}.
+This is just a rough concept to show what's possible -- the real thing would be fully customized to your brand. If you're interested in seeing what a finished version could look like, just reply to this email{f" or book a quick call: {SENDER_CALENDAR}" if SENDER_CALENDAR else ""}.
 
 Best,
 {sig_plain}

@@ -58,42 +58,56 @@ def enhance_site_content(
         names = [s["name"] if isinstance(s, dict) else s for s in scraped_services[:6]]
         services_text = ", ".join(names)
 
-    prompt = f"""You are a premium website copywriter for contractor businesses. Write unique,
-compelling marketing copy for this business. Be specific, professional, and conversion-focused.
-Do NOT use generic filler — write like you know this business personally.
+    prompt = f"""You are an elite conversion copywriter who specializes in contractor/home services websites.
+You write copy that makes homeowners pick up the phone. Every word earns trust and drives action.
 
 BUSINESS INFO:
-- Name: {business_name}
+- Company: {business_name}
 - Trade: {trade}
 - State: {state}
 - Service Area: {service_area or "local area"}
 - Years in Business: {years_in_business or "established"}
 - Their Current Tagline: {scraped_tagline or "(none)"}
-- Their Current About Text: {scraped_about[:500] or "(none provided)"}
-- Their Services: {services_text or "(general " + trade.lower() + " services)"}
+- Their About Text: {scraped_about[:800] or "(none — write from scratch)"}
+- Their Services: {services_text or "(create realistic services for a " + trade.lower() + " company)"}
 
-Generate the following in valid JSON format (no markdown, no code blocks, just raw JSON):
+Generate JSON with these fields. Make EVERY word count — this copy needs to convert:
+
 {{
-  "headline": "A bold, compelling 5-10 word headline for the hero section. Make it powerful and specific to their trade. No generic slogans.",
-  "about_text": "A 2-3 sentence about paragraph (80-150 words). Reference their specific trade, years of experience if known, and service area. Sound authentic and trustworthy, not salesy. If they provided about text, rewrite it to be more compelling while keeping the key facts.",
+  "headline": "5-8 word hero headline. Must be specific to {trade}. Reference a concrete benefit or outcome. Examples of GOOD headlines: 'Your Roof. Our Reputation. Zero Worry.' or 'Atlanta's Most Trusted Solar Team Since 2015'. Examples of BAD headlines: 'Quality Service You Can Trust' or 'Professional {trade} Solutions'. Be bold and memorable.",
+
+  "subheadline": "A 10-20 word supporting line under the headline. Add specificity: mention their service area, a key differentiator, or a trust signal like years in business.",
+
+  "about_text": "Write 100-180 words. This must feel PERSONAL, not corporate. Rules: (1) Start with the company name and a specific claim, (2) Mention their service area by name, (3) Include a concrete detail — years in business, number of projects, team size, certifications, (4) End with what makes them different from competitors. If they gave about text, REWRITE it to be more compelling while keeping all factual details. Never say 'we are committed to excellence' or similar filler.",
+
   "service_descriptions": [
-    {{"name": "Service 1 Name", "desc": "A unique 15-25 word description that sounds specific and professional"}},
-    {{"name": "Service 2 Name", "desc": "Another unique description"}},
-    {{"name": "Service 3 Name", "desc": "Another unique description"}},
-    {{"name": "Service 4 Name", "desc": "Another unique description"}},
-    {{"name": "Service 5 Name", "desc": "Another unique description"}},
-    {{"name": "Service 6 Name", "desc": "Another unique description"}}
+    {{"name": "Service Name", "desc": "20-30 word description. Include a SPECIFIC benefit to the homeowner. Not 'professional installation' but 'Protect your home with Class A materials backed by a 25-year warranty'. Each must be different."}},
+    {{"name": "...", "desc": "..."}},
+    {{"name": "...", "desc": "..."}},
+    {{"name": "...", "desc": "..."}},
+    {{"name": "...", "desc": "..."}},
+    {{"name": "...", "desc": "..."}}
   ],
-  "cta_text": "A compelling 8-15 word call-to-action for the contact section. Create urgency without being pushy.",
-  "meta_description": "A 150-160 character SEO meta description for the page. Include the business name, trade, and location."
+
+  "cta_text": "8-15 word call-to-action. Create soft urgency. Example: 'Schedule your inspection before the next storm season' or 'Get a detailed quote — most respond within 2 hours'. NOT 'Contact us today'.",
+
+  "meta_description": "150-160 char SEO description. Format: '[Company] offers [key services] in [area]. [Trust signal]. [CTA].'",
+
+  "unique_selling_points": [
+    "A specific trust signal like 'Licensed & Insured — Policy #XXXXX on file'",
+    "A concrete differentiator like 'Same-day emergency response available'",
+    "A social proof point like 'Trusted by 500+ {service_area or state} homeowners'",
+    "A guarantee like '100% satisfaction guaranteed or we come back at no charge'"
+  ]
 }}
 
-IMPORTANT RULES:
-- Use their actual service names if provided, otherwise create realistic ones for their trade
-- If they gave about text, ENHANCE it — don't replace it with generic copy
-- The headline should be memorable and trade-specific, not "Quality You Can Trust" generic nonsense
-- Sound human, not corporate. These are local contractors, not Fortune 500 companies
-- Return ONLY the JSON object, nothing else"""
+CRITICAL RULES:
+- Use their ACTUAL service names if provided. Create realistic ones otherwise.
+- If they gave about text, ENHANCE it — keep the facts, improve the writing.
+- NO generic corporate buzzwords. These are LOCAL contractors, not Fortune 500.
+- Every description must include a SPECIFIC benefit (time saved, money saved, protection gained, warranty length).
+- The unique_selling_points should feel like things posted on a real contractor's truck or yard sign.
+- Return ONLY valid JSON. No markdown, no code blocks, no explanation."""
 
     logger.info("Generating AI copy for %s (%s)", business_name, trade)
     raw = _call_gemini(prompt)
